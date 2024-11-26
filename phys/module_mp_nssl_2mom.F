@@ -11666,7 +11666,7 @@ END SUBROUTINE nssl_2mom_driver
             ssf(mgs) = 100.*(qx(mgs,lv)/c1 - 1.0)  ! from "new" values
           ENDIF
 
-          IF ( ssf(mgs) > 0.0 .or. wvel(mgs) > 0.0 ) THEN
+          IF ( ssf(mgs) > 0.0 .and. wvel(mgs) > 0.0 ) THEN
 
            cpm = cp + cpv*qx(mgs,lv)
            evs = pres(mgs)*qvs(mgs)/0.622
