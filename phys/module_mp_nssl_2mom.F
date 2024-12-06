@@ -17136,7 +17136,13 @@ END SUBROUTINE nssl_2mom_driver
          ! ave. diam of freezing drops in microns
            IF ( qiacr(mgs)*dtp > qxmin(lh) .and. ciacr(mgs) > 1.e-3 ) THEN
              tmpdiam = 1.e6*( 6.*qiacr(mgs)/(1000.*pi*ciacr(mgs) ) )**(1./3.) ! avg. diameter of newly frozen drops in microns
-             csplinter(mgs) = lawson_splinter_fac*tmpdiam**4*ciacr(mgs)
+              fac = 1.0
+              IF ( nsplinter .eq. 1001 ) THEN
+             !   fac = 0.2/sqrt(2.0*pi*10.**2)*Exp(-0.5*((258.-temg(mgs))/10.)**2 ) ! temperature dependence from Sullivan et al. 2018 ACP
+             ! ELSE
+                fac = 0.2*Exp(-0.5*((258.-temg(mgs))/10.)**2 ) ! temperature dependence from Sullivan et al. 2018 ACP
+              ENDIF
+             csplinter(mgs) = fac*lawson_splinter_fac*tmpdiam**4*ciacr(mgs)
            ENDIF
         ELSEIF ( nsplinter .ge. 0 ) THEN
           csplinter(mgs) = nsplinter*ciacr(mgs)
@@ -18156,7 +18162,13 @@ END SUBROUTINE nssl_2mom_driver
             tmp = 0
             IF ( qrfrz(mgs)*dtp > qxmin(lh) .and. crfrz(mgs) > 1.e-3 ) THEN
               tmpdiam = 1.e6*( 6.*qrfrz(mgs)/(1000.*pi*crfrz(mgs) ))**(1./3.)  ! avg. diameter of newly frozen drops in microns
-              tmp = lawson_splinter_fac*tmpdiam**4*crfrz(mgs)
+              fac = 1.0
+              IF ( nsplinter .eq. 1001 ) THEN
+             !   fac = 0.2/sqrt(2.0*pi*10.**2)*Exp(-0.5*((258.-temg(mgs))/10.)**2 ) ! temperature dependence from Sullivan et al. 2018 ACP
+             ! ELSE
+                fac = 0.2*Exp(-0.5*((258.-temg(mgs))/10.)**2 ) ! temperature dependence from Sullivan et al. 2018 ACP
+              ENDIF
+              tmp = fac*lawson_splinter_fac*tmpdiam**4*crfrz(mgs)
             ENDIF
           ELSEIF ( nsplinter .gt. 0 ) THEN
             tmp = nsplinter*crfrz(mgs)
