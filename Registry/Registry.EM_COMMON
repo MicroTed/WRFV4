@@ -577,6 +577,15 @@ state   real    qvoli3            ikjftb  scalar      1         -     \
 state   real    qaoli3            ikjftb  scalar      1         -     \
    i0rhusdf=(bdy_interp:dt)    "QAOLI3"           "Ice volume-3 times aspect ratio mixing ratio" "m(3) kg(-1)"
 
+state   real    qnn_co         ikjftb  scalar      1         -     \
+   i0rhusdf=(bdy_interp:dt)    "QNCCNCO"         "CCN Number concentration: coarse mode" "# kg(-1)"
+state   real    qnna_co        ikjftb  scalar      1         -     \
+   i0rhusdf=(bdy_interp:dt)    "QNCCNACO"         "Activated CCN Number concentration: coarse mode" "# kg(-1)"
+state   real    qnn_nu         ikjftb  scalar      1         -     \
+   i0rhusdf=(bdy_interp:dt)    "QNCCNNU"         "CCN Number concentration" "# kg(-1): nuc mode"
+state   real    qnna_nu        ikjftb  scalar      1         -     \
+   i0rhusdf=(bdy_interp:dt)    "QNCCNANU"         "Activated CCN Number concentration: nuc mode" "# kg(-1)"
+
 state   real    -              ikjftb  dfi_scalar      1         -     -   -
 state   real    dfi_qndrop     ikjftb  dfi_scalar      1         -     \
    rusdf=(bdy_interp:dt)    "DFI_QNDROP"    "DFI Droplet number mixing ratio"        "# kg-1"
@@ -2410,6 +2419,8 @@ rconfig   logical  write_thompson_mp38table   namelist,physics     1           .
 rconfig   integer     mp_physics          namelist,physics	max_domains    -1     irh       "mp_physics"            ""      ""
 #rconfig   integer     milbrandt_ccntype   namelist,physics      max_domains    0       rh       "milbrandt select maritime(1)/continental(2)"  ""      ""
 rconfig   real     nssl_cccn              namelist,physics      1            0.5e9    rh       "Base CCN concentration for NSSL microphysics"  ""      ""
+rconfig   real     nssl_cccnnu            namelist,physics      1            0.0e9    rh       "Nu-mode CCN concentration for NSSL microphysics"  ""      ""
+rconfig   real     nssl_cccnco            namelist,physics      1            0.0e9    rh       "Co-mode CCN concentration for NSSL microphysics"  ""      ""
 rconfig   real     nssl_alphah            namelist,physics      1             0       rh       "Graupel PSD shape paramter"  ""      ""
 rconfig   real     nssl_alphahl           namelist,physics      1             1       rh       "Hail PSD shape paramter"  ""      ""
 rconfig   real     nssl_cnoh              namelist,physics      1            4.e5     rh       "Graupel intercept paramter"  ""      ""
@@ -3057,6 +3068,7 @@ package   nssl_hail       nssl_hail_on==1              -             moist:qh;sc
 package   nssl_hail1m     nssl_hail_on==2              -             moist:qh;
 package   nssl_ccn_opt    nssl_ccn_on==1               -             scalar:qnn
 package   nssl_ccna_opt   nssl_ccn_on==2               -             scalar:qnn,qnna
+package   nssl_ccn_mode   nssl_ccn_on==22               -            scalar:qnn,qnna,qnn_co,qnna_co,qnn_nu,qnna_nu
 package   nssl_graupelvol nssl_density_on==1           -             scalar:qvolg
 package   nssl_hailvol    nssl_density_on==2           -             scalar:qvolg,qvolh
 

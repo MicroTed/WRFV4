@@ -52,7 +52,8 @@ SUBROUTINE microphysics_driver(                                          &
                       ,qndrop_curr,qni_curr,qh_curr,qnh_curr             &
                       ,qzr_curr,qzi_curr,qzs_curr,qzg_curr,qzh_curr      &
                       ,qns_curr,qnr_curr,qng_curr,qnn_curr,qnc_curr      &
-                      ,qnna_curr                                         &
+                      ,qnna_curr,qnna_co_curr,qnna_nu_curr                 &
+                      ,qnn_co_curr,qnn_nu_curr                           &
                       ,qnwfa_curr,qnifa_curr,qnbca_curr                  & ! for water/ice-friendly/black carbon aerosols
                       ,f_qnwfa,f_qnifa,f_qnbca                           & ! for water/ice-friendly/black carbon aerosols
                       ,qvolg_curr,qvolh_curr                             &
@@ -71,6 +72,7 @@ SUBROUTINE microphysics_driver(                                          &
                       ,f_qv,f_qc,f_qr,f_qi,f_qs,f_qg,f_qndrop,f_qni      &
                       ,f_qns,f_qnr,f_qng,f_qnc,f_qnn,f_qh,f_qnh          &
                       ,    f_qnna, f_qzr,f_qzi,f_qzs,f_qzg,f_qzh         &
+                      ,f_qnn_co,f_qnn_nu,f_qnna_co,f_qnna_nu               &
                       ,f_qvolg,f_qvolh                                   &
                       ,f_qic,f_qip,f_qid &
                       ,f_qnic,f_qnip,f_qnid &
@@ -634,6 +636,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                  ,qt_curr,qndrop_curr,qni_curr,qh_curr,qnh_curr   &
                  ,qns_curr,qnr_curr,qng_curr,qnn_curr,qnc_curr    &
                  ,qic_curr,qip_curr,qid_curr,qnna_curr            &
+                 ,qnn_co_curr,qnn_nu_curr,qnna_co_curr,qnna_nu_curr &
                  ,qnic_curr,qnip_curr,qnid_curr &
                  ,qzr_curr,qzi_curr,qzs_curr,qzg_curr,qzh_curr    &
                  ,qir_curr,qib_curr                               & ! for P3
@@ -714,6 +717,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 
    LOGICAL, OPTIONAL :: f_qv,f_qc,f_qr,f_qi,f_qs,f_qg,f_qndrop,f_qni,f_qt     &
                        ,f_qns,f_qnr,f_qng,f_qnn,f_qnna,f_qnc,f_qh,f_qnh,f_qzr &
+                       ,f_qnn_co,f_qnn_nu,f_qnna_co,f_qnna_nu                   &
                       ,f_effr,f_ice_effr,f_tot_effr &
                        ,f_qic_effr,f_qip_effr,f_qid_effr &
                       ,f_qic,f_qip,f_qid &
@@ -807,7 +811,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
    ENDIF
 
 ! set this to true to print out the global max/min for W on each time step.
-   IF ( .false. ) THEN
+   IF ( .true. ) THEN
       wmax = maxval( w(ips:ipe,kps:kpe,jps:jpe) )
       wmin = minval( w(ips:ipe,kps:kpe,jps:jpe) )
 #if ( defined(DM_PARALLEL)  &&   ! defined(STUBMPI) )
@@ -1974,6 +1978,10 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                      ZHL=qzh_curr,  f_zhl = f_qzh,       &
                      cn=qnn_curr,  f_cn=f_qnn,           &
                      cna=qnna_curr,  f_cna=f_qnna,       &
+                     cn_co=qnn_co_curr, f_cnco=f_qnn_co,     &
+                     cna_co=qnna_co_curr, f_cnaco=f_qnna_co, &
+                     cn_nu=qnn_nu_curr, f_cnnu=f_qnn_nu,     &
+                     cna_nu=qnna_nu_curr, f_cnanu=f_qnna_nu, &
                      PII=pi_phy,                         &
                      P=p,                                &
                      W=w,                                &

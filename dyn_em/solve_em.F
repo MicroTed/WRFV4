@@ -3835,6 +3835,10 @@ BENCH_START(micro_driver_tim)
       &        , QT_CURR=scalar(ims,kms,jms,P_QT), F_QT=F_QT              &
       &        , QNN_CURR=scalar(ims,kms,jms,P_QNN), F_QNN=F_QNN          &
       &        , QNNA_CURR=scalar(ims,kms,jms,P_QNNA), F_QNNA=F_QNNA      &
+      &        , QNN_CO_CURR=scalar(ims,kms,jms,P_QNN_CO), F_QNN_CO=F_QNN_CO          &
+      &        , QNN_NU_CURR=scalar(ims,kms,jms,P_QNN_NU), F_QNN_NU=F_QNN_NU       &
+      &        , qnna_co_CURR=scalar(ims,kms,jms,P_QNNA_CO), F_qnna_co=F_QNNA_CO      &
+      &        , qnna_nu_CURR=scalar(ims,kms,jms,P_QNNA_NU), F_qnna_nu=F_QNNA_NU      &
       &        , QNI_CURR=scalar(ims,kms,jms,P_QNI), F_QNI=F_QNI          &
       &        , QNC_CURR=scalar(ims,kms,jms,P_QNC), F_QNC=F_QNC          &
       &        , QNR_CURR=scalar(ims,kms,jms,P_QNR), F_QNR=F_QNR          &
