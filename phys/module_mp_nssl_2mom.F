@@ -2380,6 +2380,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
                               elec_physics,                                             &
                               induc,elecz,scion,sciona,f_scion,f_sciona,                &
                               noninduc,noninducp,noninducn,                             &
+                              ssat3d,ssati,f_ssat,f_ssati,                              &
                               pcc2, pre2, depsubr,      &
                               mnucf2, melr2, ctr2,     &
                               rim1_2, rim2_2,rim3_2, &
@@ -2427,6 +2428,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
                             qi,qhl,ccw,crw,cci,csw,chw,chl,vhw,vhl
       integer, optional, intent(in) :: is_theta_or_temp
       logical, optional, intent(in) ::  f_zrw, f_zhw, f_zhl, f_vhw, f_vhl ! not used yet
+      logical, optional, intent(in) ::  f_ssat,f_ssati 
       real, dimension(ims:ime, kms:kme, jms:jme), optional, intent(inout):: dbz, vzf, cn, cna, cni, cnuf
       real, dimension(ims:ime, kms:kme, jms:jme), optional, intent(inout):: cn_nu, cn_ac, cn_co, cinp, cna_co, cna_nu
       logical, optional, intent(in) :: f_cnnu, f_cnac, f_cnco, f_cinp, f_cnaco, f_cnanu
@@ -2447,11 +2449,12 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
 
       real, dimension(ims:ime, kms:kme, jms:jme), intent(in)::  pii
       real, dimension(ims:ime, kms:kme, jms:jme), optional, intent(inout)::   &
+                              ssat3d, ssati,              &
                               pcc2, pre2, depsubr,      &
-                              mnucf2, melr2, ctr2,     &
-                              rim1_2, rim2_2,rim3_2, &
-                              nctr2, nnuccd2, nnucf2, &
-                              effc2,effr2,effi2,       &
+                              mnucf2, melr2, ctr2,      &
+                              rim1_2, rim2_2,rim3_2,    &
+                              nctr2, nnuccd2, nnucf2,   &
+                              effc2,effr2,effi2,        &
                               effs2, effg2,                       &
                               fc2, fr2,fi2,fs2,fg2, &
                               fnc2, fnr2,fni2,fns2,fng2
@@ -2561,6 +2564,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
       double precision :: wvol5,wvol10
       real :: tmp,dv,dv1,tmpchg
       real :: rdt
+      real :: temp1, c1
       
       double precision :: dt1,dt2
       double precision :: timesed,timesed1,timesed2,timesed3, timegs, timenucond, timedbz,zmaxsed
@@ -3309,6 +3313,43 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
          ENDDO
      ENDIF
 
+     IF ( ( ( present( ssat3d ) .and. present( f_ssat ) ) .or.  &
+            ( present( ssati ) .and. present( f_ssati ) ) ) .and. makediag ) THEN
+         DO kz = kts,kte
+          DO ix = its,ite
+
+         ! updated temperature and qv
+         temp1 = t0(ix,1,kz) !  an(ix,1,kz,lt)*t77(ix,1,kz)
+          ltemq = Int( (temp1-163.15)/fqsat+1.5 )
+         ltemq = Min( nqsat, Max(1,ltemq) )
+
+          IF ( present( ssat3d ) .and. present( f_ssat ) ) THEN
+          IF ( f_ssat ) THEN
+
+!          c1 = t00(ix,1,kz)*tabqvs(ltemq)
+          IF ( iqvsopt == 0 ) THEN
+            c1 = (380.0/pn(ix,1,kz))*tabqvs(ltemq)
+          ELSEIF ( iqvsopt == 1 ) THEN
+            c1 = rdorv*esbolton*tabqvs(ltemq)/(pn(ix,1,kz) - esbolton*tabqvs(ltemq))
+          ENDIF
+
+          IF ( c1 > 0. ) THEN
+            ssat3d(ix,kz,jy) = 100.*(an(ix,1,kz,lv)/c1 - 1.0)  ! from "new" values
+          ENDIF
+          
+          ENDIF
+          ENDIF
+
+          IF ( present( ssati ) .and. present( f_ssati ) ) THEN
+          IF ( f_ssati ) THEN
+           t9s = (380.0/pn(ix,1,kz))*tabqis(ltemq)  !saturation mixing ratio wrt ice
+           ssati(ix,kz,jy) = 100.*(an(ix,1,kz,lv)/t9s - 1.0) !  Min(t8s,max(an(ix,1,kz,lv),0.0))/t9s  ! qv/qvi
+          ENDIF
+          ENDIF
+
+        ENDDO
+      ENDDO
+     ENDIF
 
 ! compute diagnostic S-band reflectivity if needed
      IF ( present( dbz ) .and. makediag .and. lastlooptmp ) THEN
@@ -3463,7 +3504,7 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
            ! not used here
          ELSEIF ( flag_ccn .and. lccn > 1 .and. .not. flag_qndrop) THEN
             IF ( lccna > 1 .and. .not. ( present( cna ) .and. f_cnatmp ) ) THEN
-              cn(ix,kz,jy) = Max(0.0, an(ix,1,kz,lccna) )
+              cn(ix,kz,jy) = Max( 0.0, an(ix,1,kz,lccna) )
             ELSE
               cn(ix,kz,jy) = an(ix,1,kz,lccn)
             ENDIF
@@ -3474,10 +3515,10 @@ SUBROUTINE nssl_2mom_driver(qv, qc, qr, qi, qs, qh, qhl, ccw, crw, cci, csw, chw
            ENDIF
          ENDIF
          IF ( present( cna_co ) .and. f_cnacotmp ) THEN
-           cna_co(ix,kz,jy) = an(ix,1,kz,lccnaco) 
+           cna_co(ix,kz,jy) = Max( 0.0, an(ix,1,kz,lccnaco) )
          ENDIF
          IF ( present( cna_nu ) .and. f_cnanutmp ) THEN
-           cna_nu(ix,kz,jy) = an(ix,1,kz,lccnanu)
+           cna_nu(ix,kz,jy) = Max(0.0, an(ix,1,kz,lccnanu) )
          ENDIF
          IF ( ac_opt == 1 .or. ac_opt == 11 ) THEN
            ! IF ( present( cn_ac ) .and. flag_cnac ) THEN
@@ -12400,6 +12441,11 @@ END SUBROUTINE nssl_2mom_driver
            ccnanu(mgs) = ccnanu(mgs) + cn_nu
            ccnaco(mgs) = ccnaco(mgs) + cn_co
            ccna(mgs) = ccna(mgs) + cn_ac
+!            IF ( ccnaco(mgs) > ccnc_co(mgs) ) THEN
+!              write(0,*) 'ccnaco > ccnc_co, cn_co = ',ccnaco(mgs),ccnc_co(mgs), cn_co
+!            ELSEIF ( cn_co > 0. ) THEN
+!              write(0,*) 'ccnaco, ccnc_co, cn_co = ',ccnaco(mgs),ccnc_co(mgs), cn_co
+!            ENDIF
         ENDIF
 
 !!          cx(mgs,lc) = Max(cx(mgs,lc), cn(mgs) ) 
@@ -13182,12 +13228,12 @@ END SUBROUTINE nssl_2mom_driver
                 ! restore CCN proportionally to each type, although coarse are presumably already lost to rain
                 tmp2 = an(ix,jy,kz,lccna) + an(ix,jy,kz,lccnaco) + an(ix,jy,kz,lccnanu)
                 IF ( tmp2 > 0.0 .and. tmp > 0.0 ) THEN
-                  an(ix,jy,kz,lccna) = an(ix,jy,kz,lccna) - tmp*an(ix,jy,kz,lccna)/tmp2
-                  an(ix,jy,kz,lccnaco) = an(ix,jy,kz,lccnaco) - tmp*an(ix,jy,kz,lccnaco)/tmp2
-                  an(ix,jy,kz,lccnanu) = an(ix,jy,kz,lccnanu) - tmp*an(ix,jy,kz,lccnanu)/tmp2
+                  an(ix,jy,kz,lccna) = Max(0.0, an(ix,jy,kz,lccna) - tmp*an(ix,jy,kz,lccna)/tmp2 )
+                  an(ix,jy,kz,lccnaco) = Max(0.0, an(ix,jy,kz,lccnaco) - tmp*an(ix,jy,kz,lccnaco)/tmp2 )
+                  an(ix,jy,kz,lccnanu) = Max(0.0, an(ix,jy,kz,lccnanu) - tmp*an(ix,jy,kz,lccnanu)/tmp2 )
                 ENDIF
               ELSE
-                an(ix,jy,kz,lccna) = an(ix,jy,kz,lccna) - tmp
+                an(ix,jy,kz,lccna) = Max(0.0, an(ix,jy,kz,lccna) - tmp)
               ENDIF
           ENDIF
         ENDIF
