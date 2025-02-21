@@ -1249,6 +1249,7 @@ MODULE module_mp_nssl_2mom
      & nssl_alphahl, &
      & nssl_alphar, &
      & nssl_density_on, nssl_hail_on, nssl_ccn_on, nssl_icecrystals_on, ccn_is_ccna, &
+     & nssl_ccn_opt, &
      & infileunit, &
      & myrank, mpiroot &
      )
@@ -1270,8 +1271,8 @@ MODULE module_mp_nssl_2mom
      & nssl_icdx,                    &
      & nssl_icdxhl, myrank, mpiroot, &
      & nssl_ufccn,                   &
-     & nssl_ccn_on
-   logical, intent(in), optional :: nssl_density_on, nssl_hail_on, nssl_icecrystals_on
+     & nssl_ccn_opt
+   logical, intent(in), optional :: nssl_density_on, nssl_ccn_on, nssl_hail_on, nssl_icecrystals_on
    integer, intent(inout), optional :: ccn_is_ccna
 
   integer, intent(in),optional      :: infileunit
@@ -1469,9 +1470,11 @@ MODULE module_mp_nssl_2mom
       ENDIF
 
         IF ( present( nssl_ccn_on ) ) THEN
-          IF ( nssl_ccn_on > 0 ) THEN
+          IF ( nssl_ccn_on ) THEN
             ccn_on = 1
-            IF ( nssl_ccn_on > 10 ) ac_opt = 22
+            IF ( present( nssl_ccn_opt ) ) THEN
+               IF ( nssl_ccn_opt > 10 ) ac_opt = 22
+            ENDIF
           ELSE
             ccn_on = 0
             irenuc = 2
@@ -1481,8 +1484,8 @@ MODULE module_mp_nssl_2mom
       IF ( irenuc >= 5 ) THEN
         turn_on_ccna = .true.
         IF ( present( nssl_ccn_on ) ) THEN
-          IF ( nssl_ccn_on <= 0 ) THEN
-      write(0,*) 'NSSL_MP Error: Must have nssl_ccn_on=1 for irenuc >= 5!'
+          IF ( .not. nssl_ccn_on ) THEN
+      write(0,*) 'NSSL_MP Error: Must have nssl_ccn_on >0 (true) for irenuc >= 5!'
         STOP
           ENDIF
         ENDIF
