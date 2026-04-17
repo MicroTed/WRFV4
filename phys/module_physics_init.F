@@ -4778,7 +4778,10 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
              hailaware_flag=config_tempo_hailaware, tempo_cfgs=tempo_cfgs)
 
      CASE (MORR_TWO_MOMENT)
-         CALL morr_two_moment_init( config_flags%morr_rimed_ice )
+         CALL morr_two_moment_init( config_flags%morr_rimed_ice, config_flags%morr_dnr_max, &
+                                    config_flags%morr_irainvt, config_flags%morr_ndcnst, &
+                                    config_flags%morr_dng_max, config_flags%morr_rssflg, &
+                                    config_flags%morr_sssflg, config_flags%morr_hssflg )
 #if (EM_CORE==1)
      CASE (MORR_TM_AERO)
          CALL morr_two_moment_init_aero( config_flags%morr_rimed_ice )
