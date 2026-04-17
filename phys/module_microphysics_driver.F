@@ -840,7 +840,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
    ENDIF
 
 ! set this to true to print out the global max/min for W on each time step.
-   IF ( .false. ) THEN
+   IF ( .true. ) THEN
       wmax = maxval( w(ips:ipe,kps:kpe,jps:jpe) )
       wmin = minval( w(ips:ipe,kps:kpe,jps:jpe) )
 #if ( defined(DM_PARALLEL)  &&   ! defined(STUBMPI) )
@@ -1426,6 +1426,8 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
 
              config_tempo_aerosolaware = .false.
              config_tempo_hailaware = .false.
+             tempo_cfgs%refl10cm_flag = .false.
+             if ( do_radar_ref > 0 .and. diagflag ) tempo_cfgs%refl10cm_flag = .true.
              if (config_flags%tempo_aerosolaware == 1) config_tempo_aerosolaware = .true.
              if (config_flags%tempo_hailaware == 1) config_tempo_hailaware = .true.
              tempo_cfgs%aerosolaware_flag = config_tempo_aerosolaware
@@ -1477,21 +1479,21 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
                    ! ratio of frozen precipitation to total is not optional in wrf
                    sr(i,j) = tempo_driver_diags%frozen_fraction(i,j)
 
-                   if (config_flags%nwp_diagnostics == 1) then
+                   if (config_flags%nwp_diagnostics == 1 .and. diagflag ) then
                       if (present(hail_maxk1)) then
                          if (allocated(tempo_driver_diags%max_hail_diameter_sfc)) then
-                            hail_maxk1(i,j) = tempo_driver_diags%max_hail_diameter_sfc(i,j)
+                            hail_maxk1(i,j) = 1.e-3*tempo_driver_diags%max_hail_diameter_sfc(i,j) ! convert mm to m
                          endif
                       endif
                       if (present(hail_max2d)) then
                          if (allocated(tempo_driver_diags%max_hail_diameter_column)) then
-                            hail_max2d(i,j) = tempo_driver_diags%max_hail_diameter_column(i,j)
+                            hail_max2d(i,j) = 1.e-3*tempo_driver_diags%max_hail_diameter_column(i,j) ! convert mm to m
                          endif
                       endif
                    endif
                    ! 3d tempo diagnostics
                    do k = kts, kte
-                      if (do_radar_ref == 1) then
+                      if (do_radar_ref == 1 .and. k <= ke_diag .and. diagflag ) then
                          if (present(refl_10cm)) then
                             if (allocated(tempo_driver_diags%refl10cm)) then
                                refl_10cm(i,k,j) = tempo_driver_diags%refl10cm(i,k,j)

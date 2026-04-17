@@ -3749,8 +3749,12 @@
           if (rg(k).gt. R1) then
            if (is_hail_aware) then
               xrho_g = MAX(rho_g(1),MIN(rg(k)/rho(k)/rb(k),rho_g(NRHG)))
+            IF ( .false. ) THEN
               afall = a_coeff*((4.0*xrho_g*9.8)/(3.0*rho(k)))**b_coeff
               afall = afall * visco(k)**(1.0-2.0*b_coeff)
+            ELSE
+              afall = (4.0*xrho_g*9.8/(3*0.504843467198652*rho_not))**b_coeff
+            ENDIF
            else
               afall = av_g_old
               bfall = bv_g_old

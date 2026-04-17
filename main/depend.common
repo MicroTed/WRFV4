@@ -618,7 +618,6 @@ module_clear_halos.o: \
 # DEPENDENCIES for phys
 
 module_madwrf.o: \
-	module_wrf_top.o \
 	../share/module_model_constants.o \
 	../share/module_soil_pre.o \
 	module_mp_thompson.o 
@@ -2570,10 +2569,10 @@ module_cu_gf_ctrans.o: \
 
 
 module_cumulus_driver.o: \
-	../share/module_chem_share.o \
-	module_cu_kf.o \
-	module_cu_g3.o \
-	module_cu_gf_wrfdrv.o \
+ 	../share/module_chem_share.o \
+ 	module_cu_kf.o \
+ 	module_cu_g3.o \
+ 	module_cu_gfl_wrf.o \
 	module_cu_kfeta.o \
 	$(PHYS_CU) \
 	module_cu_bmj.o \
