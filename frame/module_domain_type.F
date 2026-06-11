@@ -4,6 +4,12 @@ MODULE module_domain_type
    USE module_driver_constants
    USE module_utility
    USE module_streams
+#ifdef WRF_CFBM
+   ! fire_behavior
+   USE state_mod, only : state_fire_t
+   USE namelist_mod, only : namelist_t
+#endif
+
 
    IMPLICIT NONE
 
@@ -39,17 +45,17 @@ MODULE module_domain_type
    END TYPE tile_zone
 
    TYPE fieldlist
-      CHARACTER*80    :: VarName
-      CHARACTER*1     :: Type
-      CHARACTER*1     :: ProcOrient  ! 'X' 'Y' or ' ' (X, Y, or non-transposed)
-      CHARACTER*80    :: DataName
-      CHARACTER*80    :: Description
-      CHARACTER*80    :: Units
-      CHARACTER*10    :: MemoryOrder
-      CHARACTER*10    :: Stagger
-      CHARACTER*80    :: dimname1
-      CHARACTER*80    :: dimname2
-      CHARACTER*80    :: dimname3
+      CHARACTER*80    :: VarName     = ''
+      CHARACTER*1     :: Type        = ''
+      CHARACTER*1     :: ProcOrient  = '' ! 'X' 'Y' or ' ' (X, Y, or non-transposed)
+      CHARACTER*80    :: DataName    = ''
+      CHARACTER*80    :: Description = ''
+      CHARACTER*80    :: Units       = ''
+      CHARACTER*10    :: MemoryOrder = ''
+      CHARACTER*10    :: Stagger     = ''
+      CHARACTER*80    :: dimname1    = ''
+      CHARACTER*80    :: dimname2    = ''
+      CHARACTER*80    :: dimname3    = ''
       LOGICAL         :: scalar_array
       LOGICAL         :: boundary_array
       LOGICAL         :: restart
@@ -251,6 +257,12 @@ MODULE module_domain_type
 ! 20121003 jm  : for caching tiling
       TYPE( tile_zone ) :: tile_zones(MAX_TILING_ZONES)
       LOGICAL :: tiling_latch(MAX_TILING_ZONES)
+
+#ifdef WRF_CFBM
+      ! fire_behavior
+      TYPE(state_fire_t) :: fire_state
+      TYPE(namelist_t)   :: cfbm_namelist
+#endif
 
    END TYPE domain
 END MODULE module_domain_type
