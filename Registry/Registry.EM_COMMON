@@ -2697,6 +2697,14 @@ rconfig   logical insert_init_cloud       namelist,physics      1              .
 rconfig   real    ccn_conc                namelist,physics      1           1.0E8      h     "ccn_conc"                 "CCN concentration"                                                             "# m-3"
 rconfig   integer hail_opt                namelist,physics      1              0       rh    "hail_opt"                 "Hail/Graupel switch, 1:hail, 0:graupel"                                        ""
 rconfig   integer morr_rimed_ice          namelist,physics      1              1       rh    "morr_rimed_ice "          "Hail/Graupel switch for Morrison Scheme (options 10 and 40), 1:hail, 0:graupel"                                        ""
+rconfig   integer morr_irainvt            namelist,physics      1              0       rh    "morr_irainvt "          "Rain Vt switch for Morrison Scheme (options 10)"                                        ""
+rconfig   real    morr_ndcnst             namelist,physics      1           250.       rh    "morr_ndcnst "          "Droplet conc. for Morrison Scheme (options 10)"                                        ""
+rconfig   real    morr_dnr_max            namelist,physics      1       2800.e-6       rh    "morr_dnr_max "          "Max rain Dn for Morrison Scheme (options 10)"                                        ""
+rconfig   real    morr_dng_max            namelist,physics      1       2000.e-6       rh    "morr_dng_max "          "Max graupel Dn for Morrison Scheme (options 10)"                                        ""
+# ssflg : Morr size-sorting options: 0=no sorting (Vn=Vq); 1=original sorting; 2=pseudo 3-moment (conserve reflectivity)
+rconfig   integer morr_rssflg             namelist,physics      1              1       rh    "morr_rssflg "          "Rain size sorting switch for Morrison Scheme (options 10)"                                        ""
+rconfig   integer morr_sssflg             namelist,physics      1              1       rh    "morr_sssflg "          "Snow size sorting  switch for Morrison Scheme (options 10)"                                        ""
+rconfig   integer morr_hssflg             namelist,physics      1              1       rh    "morr_rssflg "          "Graupel size sorting switch for Morrison Scheme (options 10)"                                        ""
 
 rconfig   integer clean_atm_diag          namelist,physics      1              0       rh    "clean_atm_diag"     "option to switch on clean sky diagnostics (for chem)"   "flag"
 rconfig   integer calc_clean_atm_diag     derived               1              0       -     "calc_clean_atm_diag" "carries decision on using clean sky diagnostics"       "flag"

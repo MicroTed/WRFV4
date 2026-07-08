@@ -2556,11 +2556,11 @@ module_cu_gf_deep.o: \
 	module_cu_gf_ctrans.o 
 
 
-module_cu_gf_wrfdrv.o: \
-	module_cu_gf_ctrans.o \
-	module_gfs_physcons.o \
-	module_cu_gf_deep.o \
-	module_cu_gf_sh.o 
+# module_cu_gf_wrfdrv.o: \
+# 	module_cu_gf_ctrans.o \
+# 	module_gfs_physcons.o \
+# 	module_cu_gf_deep.o \
+# 	module_cu_gf_sh.o 
 
 
 module_cu_gf_sh.o: \
@@ -2594,7 +2594,6 @@ module_cumulus_driver.o: \
 	../share/module_chem_share.o \
 	module_cu_kf.o \
 	module_cu_g3.o \
-	module_cu_gf_wrfdrv.o \
 	module_cu_kfeta.o \
 	$(PHYS_CU) \
 	module_cu_bmj.o \

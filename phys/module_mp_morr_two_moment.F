@@ -95,6 +95,26 @@ MODULE MODULE_MP_MORR_TWO_MOMENT
 
    IMPLICIT NONE
 
+ ! ----------------------
+ ! ERM additions:
+   ! size sorting flags (ssflg):
+   ! 0 = no sorting, Vn = Vq
+   ! 1 = original sorting (with fall speed limits)
+   ! 2 = pseudo-3-moment: Create Z and Vz, then use q and Z to retrieve N after sedimentation
+   !                      turns off fall speed limits
+   ! 3 = As for 2 but apply fall speed limits for Vq (and set Vz by the Vz/Vq ratio)
+   integer :: rssflg = 1   ! Rain size-sorting allowed (1, default), or disallowed (0).  If 0, sets N and Z-weighted fall speeds to q-weighted value
+   integer :: sssflg = 1   ! As above but for snow
+   integer :: hssflg = 1   ! As above but for graupel
+   integer, private :: irainvt = 0  ! switch for rain fall speed for sedimentation:
+   logical :: morr_dbzsoaks = .false. ! Turn on/off wet snow reflectivity
+   logical :: morr_dbzsoakg = .false. ! Turn on/off wet graupel reflectivity
+   integer :: morr_vtlim = 1 ! Fall speed limits in Morr scheme: 0=off, 1=on (default),
+                            ! 2=on for rates only, 3=on for sed only
+                            ! note that r/s/hssflg = 2 turns off limits for sedimentation
+   real    :: morr_maxug = 20., morr_maxur = 9.1, morr_maxus = 1.2 ! maximum Vq for graupel,rain,hail
+ ! -----------------------
+ 
    REAL, PARAMETER :: PI = 3.1415926535897932384626434
    REAL, PARAMETER :: xxx = 0.9189385332046727417803297
 
@@ -175,6 +195,7 @@ MODULE MODULE_MP_MORR_TWO_MOMENT
 ! CLOUD MICROPHYSICS CONSTANTS
 
      REAL, PRIVATE ::      AI,AC,AS,AR,AG ! 'A' PARAMETER IN FALLSPEED-DIAM RELATIONSHIP
+     real, private ::      arx,frx
      REAL, PRIVATE ::      BI,BC,BS,BR,BG ! 'B' PARAMETER IN FALLSPEED-DIAM RELATIONSHIP
 !     REAL, PRIVATE ::      R           ! GAS CONSTANT FOR AIR
 !     REAL, PRIVATE ::      RV          ! GAS CONSTANT FOR WATER VAPOR
@@ -234,17 +255,19 @@ MODULE MODULE_MP_MORR_TWO_MOMENT
 
 ! CONSTANTS TO IMPROVE EFFICIENCY
 
-     REAL, PRIVATE :: CONS1,CONS2,CONS3,CONS4,CONS5,CONS6,CONS7,CONS8,CONS9,CONS10
+     REAL, PRIVATE :: CONS1,CONS2,CONS3,CONS4,CONS4z,CONS5,CONS6,CONS7,CONS7z,CONS8,CONS9,CONS10
      REAL, PRIVATE :: CONS11,CONS12,CONS13,CONS14,CONS15,CONS16,CONS17,CONS18,CONS19,CONS20
      REAL, PRIVATE :: CONS21,CONS22,CONS23,CONS24,CONS25,CONS26,CONS27,CONS28,CONS29,CONS30
      REAL, PRIVATE :: CONS31,CONS32,CONS33,CONS34,CONS35,CONS36,CONS37,CONS38,CONS39,CONS40
-     REAL, PRIVATE :: CONS41
+     REAL, PRIVATE :: CONS41, consg1, alphah, CONS5z
 
 
 CONTAINS
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-SUBROUTINE MORR_TWO_MOMENT_INIT(morr_rimed_ice) ! RAS  
+SUBROUTINE MORR_TWO_MOMENT_INIT(morr_rimed_ice, morr_dnr_max, morr_irainvt, &
+                                morr_ndcnst, morr_dng_max, &
+                                morr_rssflg,morr_sssflg,morr_hssflg ) ! RAS  
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! THIS SUBROUTINE INITIALIZES ALL PHYSICAL CONSTANTS AMND PARAMETERS 
 ! NEEDED BY THE MICROPHYSICS SCHEME.
@@ -253,7 +276,9 @@ SUBROUTINE MORR_TWO_MOMENT_INIT(morr_rimed_ice) ! RAS
 
       IMPLICIT NONE
 
-      INTEGER, INTENT(IN):: morr_rimed_ice ! RAS  
+      INTEGER, INTENT(IN):: morr_rimed_ice, morr_irainvt,  &
+                            morr_rssflg,morr_sssflg,morr_hssflg
+      real, intent(in) :: morr_dnr_max, morr_dng_max, morr_ndcnst ! RAS  
 
       integer n,i
 
@@ -273,7 +298,12 @@ SUBROUTINE MORR_TWO_MOMENT_INIT(morr_rimed_ice) ! RAS
 ! SET CONSTANT DROPLET CONCENTRATION (UNITS OF CM-3)
 ! IF NO COUPLING WITH WRF-CHEM
 
-      NDCNST = 250.
+      NDCNST = morr_ndcnst
+
+      rssflg = morr_rssflg
+      sssflg = morr_sssflg
+      hssflg = morr_hssflg
+      irainvt = morr_irainvt
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! NOTE, THE FOLLOWING OPTIONS RELATED TO DROPLET ACTIVATION 
@@ -355,6 +385,8 @@ SUBROUTINE MORR_TWO_MOMENT_INIT(morr_rimed_ice) ! RAS
          AC = 3.E7
          AS = 11.72
          AR = 841.99667
+         arx = 10.
+         frx = 516.575 ! raind fit parameters for arx*(1 - Exp(-fx*d)), where d is rain diameter in meters.
          BI = 1.
          BC = 2.
          BS = 0.41
@@ -421,12 +453,12 @@ SUBROUTINE MORR_TWO_MOMENT_INIT(morr_rimed_ice) ! RAS
          LAMMINI = 1./(2.*DCS+100.E-6)
          LAMMAXR = 1./20.E-6
 !         LAMMINR = 1./500.E-6
-         LAMMINR = 1./2800.E-6
+         LAMMINR = 1./morr_dnr_max ! 1./2800.E-6
 
          LAMMAXS = 1./10.E-6
          LAMMINS = 1./2000.E-6
          LAMMAXG = 1./20.E-6
-         LAMMING = 1./2000.E-6
+         LAMMING = 1./morr_dng_max ! 2000.E-6
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! note: these parameters only used by the non-wrf-chem version of the 
@@ -486,9 +518,15 @@ SUBROUTINE MORR_TWO_MOMENT_INIT(morr_rimed_ice) ! RAS
          CONS2=GAMMA(1.+DG)*CG
          CONS3=GAMMA(4.+BS)/6.
          CONS4=GAMMA(4.+BR)/6.
+         CONS4z=GAMMA(7.+BR)/GAMMA(7.)
          CONS5=GAMMA(1.+BS)
+         CONS5z=GAMMA(7.+BS)/GAMMA(7.)
          CONS6=GAMMA(1.+BR)
          CONS7=GAMMA(4.+BG)/6.
+         CONS7z=GAMMA(7.+BG)/GAMMA(7.)
+         alphah = 0.0
+         consg1 = (6.0 + alphah)*(5.0 + alphah)*(4.0 + alphah)/  &
+      &            ((3.0 + alphah)*(2.0 + alphah)*(1.0 + alphah))
          CONS8=GAMMA(1.+BG)
          CONS9=GAMMA(5./2.+BR/2.)
          CONS10=GAMMA(5./2.+BS/2.)
@@ -1161,23 +1199,23 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 
 ! FALL SPEED WORKING VARIABLES (DEFINED IN CODE)
 
-      REAL, DIMENSION(KTS:KTE) ::    DUMI,DUMR,DUMFNI,DUMG,DUMFNG
+      REAL, DIMENSION(KTS:KTE) ::    DUMI,DUMR,DUMFNI,DUMG,DUMFNG,DUMZS,DUMZG,DUMZR,DUMFNGsav,DUMFNRsav
       REAL UNI, UMI,UMR
       REAL, DIMENSION(KTS:KTE) ::    FR, FI, FNI,FG,FNG
       REAL RGVM
-      REAL, DIMENSION(KTS:KTE) ::   FALOUTR,FALOUTI,FALOUTNI
+      REAL, DIMENSION(KTS:KTE) ::   FALOUTR,FALOUTI,FALOUTNI,FALOUTZR,FALOUTZG,FALOUTZS
       REAL FALTNDR,FALTNDI,FALTNDNI,RHO2
-      REAL, DIMENSION(KTS:KTE) ::   DUMQS,DUMFNS
+      REAL, DIMENSION(KTS:KTE) ::   DUMQS,DUMFNS,DUMFNSsav
       REAL UMS,UNS
       REAL, DIMENSION(KTS:KTE) ::   FS,FNS, FALOUTS,FALOUTNS,FALOUTG,FALOUTNG
-      REAL FALTNDS,FALTNDNS,UNR,FALTNDG,FALTNDNG
+      REAL FALTNDS,FALTNDNS,UNR,FALTNDG,FALTNDNG,FALTNDZG,FALTNDZR,faltndzs
       REAL, DIMENSION(KTS:KTE) ::    DUMC,DUMFNC
-      REAL UNC,UMC,UNG,UMG
+      REAL UNC,UMC,UNG,UMG,UZG,UZR,UZS
       REAL, DIMENSION(KTS:KTE) ::   FC,FALOUTC,FALOUTNC
       REAL FALTNDC,FALTNDNC
       REAL, DIMENSION(KTS:KTE) ::   FNC,DUMFNR,FALOUTNR
       REAL FALTNDNR
-      REAL, DIMENSION(KTS:KTE) ::   FNR
+      REAL, DIMENSION(KTS:KTE) ::   FNR,FZR,FZG,FZS,nrsten,ngsten,zrsten,zgsten,nssten,zssten
 
 ! FALL-SPEED PARAMETER 'A' WITH AIR DENSITY CORRECTION
 
@@ -1416,6 +1454,12 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       QNISTEN(K) = 0.
       QCSTEN(K) = 0.
       QGSTEN(K) = 0.
+      nssten(k) = 0.0
+      nrsten(k) = 0.0
+      ngsten(k) = 0.0
+      zssten(k) = 0.0
+      zrsten(k) = 0.0
+      zgsten(k) = 0.0
 
 !..................................................................
 ! MICROPHYSICS PARAMETERS VARYING IN TIME/HEIGHT
@@ -1492,7 +1536,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 
          IF (iinum.EQ.1) THEN
 ! CONVERT NDCNST FROM CM-3 TO KG-1
-            NC3D(K)=NDCNST*1.E6/RHO(K)
+            NC3D(K)=NDCNST*1.E6/rhosu ! RHO(K)
          END IF
 
 ! GET SIZE DISTRIBUTION PARAMETERS
@@ -1711,10 +1755,12 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 
 ! bug fix, 10/08/09
             dum=(rhosu/rho(k))**0.54
-            UMS=MIN(UMS,1.2*dum)
-            UNS=MIN(UNS,1.2*dum)
-            UMR=MIN(UMR,9.1*dum)
-            UNR=MIN(UNR,9.1*dum)
+            IF ( morr_vtlim == 1 .or. morr_vtlim == 2 ) THEN
+            UMS=MIN(UMS,morr_maxus*dum)
+            UNS=MIN(UNS,morr_maxus*dum)
+            UMR=MIN(UMR,morr_maxur*dum)
+            UNR=MIN(UNR,morr_maxur*dum)
+            ENDIF
 
 ! hm fix, 2/12/13
 ! for above freezing conditions to get accelerated melting of snow,
@@ -1756,10 +1802,12 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 ! SET REASLISTIC LIMITS ON FALLSPEEDS
 ! bug fix, 10/08/09
             dum=(rhosu/rho(k))**0.54
-            UMG=MIN(UMG,20.*dum)
-            UNG=MIN(UNG,20.*dum)
-            UMR=MIN(UMR,9.1*dum)
-            UNR=MIN(UNR,9.1*dum)
+            IF ( morr_vtlim == 1 .or. morr_vtlim == 2 ) THEN
+            UMG=MIN(UMG,morr_maxug*dum)
+            UNG=MIN(UNG,morr_maxug*dum)
+            UMR=MIN(UMR,morr_maxur*dum)
+            UNR=MIN(UNR,morr_maxur*dum)
+            ENDIF
 
 ! PRACG IS MIXING RATIO OF RAIN PER SEC COLLECTED BY GRAUPEL/HAIL
             PRACG(K) = CONS41*(((1.2*UMR-0.95*UMG)**2+                   &
@@ -2107,7 +2155,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 
          IF (iinum.EQ.1) THEN
 ! CONVERT NDCNST FROM CM-3 TO KG-1
-            NC3D(K)=NDCNST*1.E6/RHO(K)
+            NC3D(K)=NDCNST*1.E6/rhosu ! RHO(K)
          END IF
 
 ! CALCULATE SIZE DISTRIBUTION PARAMETERS
@@ -2506,10 +2554,12 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 
 ! bug fix, 10/08/09
             dum=(rhosu/rho(k))**0.54
-            UMS=MIN(UMS,1.2*dum)
-            UNS=MIN(UNS,1.2*dum)
-            UMR=MIN(UMR,9.1*dum)
-            UNR=MIN(UNR,9.1*dum)
+            IF ( morr_vtlim == 1 .or. morr_vtlim == 2 ) THEN
+            UMS=MIN(UMS,morr_maxus*dum)
+            UNS=MIN(UNS,morr_maxus*dum)
+            UMR=MIN(UMR,morr_maxur*dum)
+            UNR=MIN(UNR,morr_maxur*dum)
+            ENDIF
 
             PRACS(K) = CONS41*(((1.2*UMR-0.95*UMS)**2+                   &
                   0.08*UMS*UMR)**0.5*RHO(K)*                      &
@@ -2561,10 +2611,12 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 ! SET REASLISTIC LIMITS ON FALLSPEEDS
 ! bug fix, 10/08/09
             dum=(rhosu/rho(k))**0.54
-            UMG=MIN(UMG,20.*dum)
-            UNG=MIN(UNG,20.*dum)
-            UMR=MIN(UMR,9.1*dum)
-            UNR=MIN(UNR,9.1*dum)
+            IF ( morr_vtlim == 1 .or. morr_vtlim == 2 ) THEN
+            UMG=MIN(UMG,morr_maxug*dum)
+            UNG=MIN(UNG,morr_maxug*dum)
+            UMR=MIN(UMR,morr_maxur*dum)
+            UNR=MIN(UNR,morr_maxur*dum)
+            ENDIF
 
             PRACG(K) = CONS41*(((1.2*UMR-0.95*UMG)**2+                   &
                   0.08*UMG*UMR)**0.5*RHO(K)*                      &
@@ -3365,8 +3417,11 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
         DUMFNR(K) = NR3D(K)+NR3DTEN(K)*DT
         DUMC(K) = QC3D(K)+QC3DTEN(K)*DT
         DUMFNC(K) = NC3D(K)+NC3DTEN(K)*DT
-	DUMG(K) = QG3D(K)+QG3DTEN(K)*DT
-	DUMFNG(K) = NG3D(K)+NG3DTEN(K)*DT
+        DUMG(K) = QG3D(K)+QG3DTEN(K)*DT
+        DUMFNG(K) = NG3D(K)+NG3DTEN(K)*DT
+        DUMFNGsav(K) = Max(0.,DUMFNG(K))
+        DUMFNRsav(K) = Max(0.,DUMFNR(K))
+        DUMFNSsav(K) = Max(0.,DUMFNS(K))
 
 ! SWITCH FOR CONSTANT DROPLET NUMBER
         IF (iinum.EQ.1) THEN
@@ -3453,43 +3508,125 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       END IF
 
       IF (DUMR(K).GE.QSMALL) THEN
-      UNR = ARN(K)*CONS6/DLAMR**BR
-      UMR = ARN(K)*CONS4/(DLAMR**BR)
+        
+        IF ( irainvt == 0 ) THEN
+          UMR = ARN(K)*CONS4/(DLAMR**BR)
+        ELSE
+         ! rhovt(mgs)*arx*(1.0 - (1.0 + frx*xdia(mgs,lr,1))**(-alp - 4.0) ) ! mass weighted
+          dum2 = (RHOSU/RHO(K))**0.54
+          UMR = dum2*arx*(1.0 - (1.0 + frx/dlamr)**(- 4.0) )
+        ENDIF
+        IF ( rssflg >= 1 ) THEN
+          IF ( irainvt == 0 ) THEN
+          UNR = ARN(K)*CONS6/DLAMR**BR
+          UZR = ARN(K)*CONS4z/(DLAMR**BR)
+          ELSE
+          UNR = dum2*arx*(1.0 - (1.0 + frx/dlamr)**(- 1.0) )
+          UZR = dum2*arx*(1.0 - (1.0 + frx/dlamr)**(- 7.0) )
+          ENDIF
+          dum = consg1*(rho(k)*DUMr(K))**2/(rho(k)*dumfnr(k))
+          DUMZR(K) = dum*(6./(pi*1000.))**2
+        ELSE
+          UNR = UMR
+          UZR = UMR
+          DUMZR(K) = 0.0
+        ENDIF
       ELSE
       UMR = 0.
       UNR = 0.
+      UZR = 0.
+      DUMZR(K) = 0.0
       END IF
+      IF( rssflg >= 2 .and. its == 29 ) THEN
+      !  write(0,*) 'k,qr,nr,zr,uzr,umr = ',k,dumr(k),dumfnr(k),dumzr(k),uzr,umr
+      ENDIF
 
       IF (DUMQS(K).GE.QSMALL) THEN
       UMS = ASN(K)*CONS3/(DLAMS**BS)
-      UNS = ASN(K)*CONS5/DLAMS**BS
+        IF ( sssflg >= 1 ) THEN
+          UNS = ASN(K)*CONS5/DLAMS**BS
+          UZS = ASN(K)*CONS5z/(DLAMS**BS)
+          dum = consg1*(rho(k)*DUMQS(K))**2/(rho(k)*dumfns(k))
+          DUMZS(K) = dum*(6./(pi*1000.))**2
+        ELSE
+          UNS = UMS
+          UZS = UMS
+          dumzs(k) = 0.0
+        ENDIF
       ELSE
       UMS = 0.
       UNS = 0.
+      dumzs(k) = 0.
+      UZS = 0.
       END IF
+      IF( sssflg >= 2 .and. its == 29 ) THEN
+      !  write(0,*) 'k,qs,ns,zs,uzs,ums = ',k,dumqs(k),dumfns(k),dumzs(k),uzs,ums,uns
+      ENDIF
 
       IF (DUMG(K).GE.QSMALL) THEN
       UMG = AGN(K)*CONS7/(DLAMG**BG)
-      UNG = AGN(K)*CONS8/DLAMG**BG
+        IF ( hssflg >= 1 ) THEN
+          UNG = AGN(K)*CONS8/DLAMG**BG
+          UZG = AGN(K)*CONS7z/(DLAMG**BG)
+!              g1 = (6.0 + alpha)*(5.0 + alpha)*(4.0 + alpha)/  &
+!      &            ((3.0 + alpha)*(2.0 + alpha)*(1.0 + alpha))
+!              zx = g1*db(ix,kz)**2*(a(ix,jy,kz,l))*a(ix,jy,kz,l)/chw
+! !             z(ix,kz,l)  = 1.e18*zx*(6./(pi*1000.))**2
+!              z(ix,kz,l)  = zx*(6./(pi*1000.))**2
+          dum = consg1*(rho(k)*DUMG(K))**2/(rho(k)*dumfng(k))
+          DUMZG(K) = dum*(6./(pi*1000.))**2
+        ELSE
+          UNG = UMG
+          UZG = UMG
+          DUMZG(K) = 0.0
+        ENDIF
       ELSE
       UMG = 0.
       UNG = 0.
+      UZG = 0.
+      DUMZG(K) = 0.0
       END IF
 
 ! SET REALISTIC LIMITS ON FALLSPEED
 
 ! bug fix, 10/08/09
         dum=(rhosu/rho(k))**0.54
-        UMS=MIN(UMS,1.2*dum)
-        UNS=MIN(UNS,1.2*dum)
+        IF ( morr_vtlim == 1 .or. morr_vtlim == 3 ) THEN
+          IF ( sssflg /= 2 ) THEN 
+            IF ( sssflg == 3 .and. ums > 0. .and. uzs > 0. ) THEN
+              dum2 = uzs/ums
+            ELSE
+              dum2 = 1.0
+            ENDIF
+            UMS=MIN(UMS,morr_maxus*dum)
+            UNS=MIN(UNS,morr_maxus*dum)
+            UZS= dum2*ums ! MIN(UZS,morr_maxus*dum)
+          ENDIF
 ! fix 053011
 ! fix for correction by AA 4/6/11
         UMI=MIN(UMI,1.2*(rhosu/rho(k))**0.35)
         UNI=MIN(UNI,1.2*(rhosu/rho(k))**0.35)
-        UMR=MIN(UMR,9.1*dum)
-        UNR=MIN(UNR,9.1*dum)
-        UMG=MIN(UMG,20.*dum)
-        UNG=MIN(UNG,20.*dum)
+          IF ( rssflg /= 2 ) THEN
+            IF ( rssflg == 3 .and. umr > 0. .and. uzr > 0. ) THEN
+              dum2 = uzr/umr
+            ELSE
+              dum2 = 1.0
+            ENDIF
+             UMR=MIN(UMR,morr_maxur*dum)
+             UNR=MIN(UNR,morr_maxur*dum)
+             UZR=dum2*umr ! MIN(UZR,morr_maxur*dum)
+          ENDIF
+          IF ( hssflg /= 2 ) THEN
+            IF ( hssflg == 3 .and. umg > 0. .and. uzg > 0. ) THEN
+              dum2 = uzg/umg
+            ELSE
+              dum2 = 1.0
+            ENDIF
+            UMG=MIN(UMG,morr_maxug*dum)
+            UNG=MIN(UNG,morr_maxug*dum)
+            UZG= UMG*dum2 ! MIN(UZG,morr_maxug*dum)
+          ENDIF
+        ENDIF
 
       FR(K) = UMR
       FI(K) = UMI
@@ -3501,6 +3638,10 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       FNC(K) = UNC
       FG(K) = UMG
       FNG(K) = UNG
+
+      FZG(K) = UZG
+      FZR(K) = UZR
+      FZS(K) = UZS
 
 ! V3.3 MODIFY FALLSPEED BELOW LEVEL OF PRECIP
 
@@ -3535,6 +3676,15 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
         IF (FNG(K).LT.1.E-10) THEN
 	FNG(K)=FNG(K+1)
 	END IF
+        IF (FZG(K).LT.1.E-10) THEN
+           FZG(K)=FZG(K+1)
+        END IF
+        IF (FZR(K).LT.1.E-10) THEN
+           FZR(K)=FZR(K+1)
+        END IF
+        IF (FZS(K).LT.1.E-10) THEN
+           FZS(K)=FZS(K+1)
+        END IF
 	END IF ! K LE KTE-1
 
 ! CALCULATE NUMBER OF SPLIT TIME STEPS
@@ -3570,6 +3720,10 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       FALOUTNC(K) = FNC(K)*DUMFNC(K)
       FALOUTG(K) = FG(K)*DUMG(K)
       FALOUTNG(K) = FNG(K)*DUMFNG(K)
+
+      FALOUTZR(K) = FZR(K)*DUMZR(K)
+      FALOUTZS(K) = FZS(K)*DUMZS(K)
+      FALOUTZG(K) = FZG(K)*DUMZG(K)
       END DO
 
 ! TOP OF MODEL
@@ -3585,18 +3739,27 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       FALTNDNC = FALOUTNC(K)/DZQ(k)
       FALTNDG = FALOUTG(K)/DZQ(k)
       FALTNDNG = FALOUTNG(K)/DZQ(k)
+      FALTNDZG = FALOUTZG(K)/DZQ(k)
+      FALTNDZR = FALOUTZR(K)/DZQ(k)
+      FALTNDZS = FALOUTZS(K)/DZQ(k)
 ! ADD FALLOUT TERMS TO EULERIAN TENDENCIES
 
       QRSTEN(K) = QRSTEN(K)-FALTNDR/NSTEP/RHO(k)
       QISTEN(K) = QISTEN(K)-FALTNDI/NSTEP/RHO(k)
       NI3DTEN(K) = NI3DTEN(K)-FALTNDNI/NSTEP/RHO(k)
       QNISTEN(K) = QNISTEN(K)-FALTNDS/NSTEP/RHO(k)
-      NS3DTEN(K) = NS3DTEN(K)-FALTNDNS/NSTEP/RHO(k)
-      NR3DTEN(K) = NR3DTEN(K)-FALTNDNR/NSTEP/RHO(k)
+      NSSTEN(K) = NSSTEN(K)-FALTNDNS/NSTEP/RHO(k)
+!      NS3DTEN(K) = NS3DTEN(K)-FALTNDNS/NSTEP/RHO(k)
+      NRSTEN(K) = NRSTEN(K)-FALTNDNR/NSTEP/RHO(k)
+!      NR3DTEN(K) = NR3DTEN(K)-FALTNDNR/NSTEP/RHO(k)
       QCSTEN(K) = QCSTEN(K)-FALTNDC/NSTEP/RHO(k)
       NC3DTEN(K) = NC3DTEN(K)-FALTNDNC/NSTEP/RHO(k)
       QGSTEN(K) = QGSTEN(K)-FALTNDG/NSTEP/RHO(k)
-      NG3DTEN(K) = NG3DTEN(K)-FALTNDNG/NSTEP/RHO(k)
+      NGSTEN(K) = NGSTEN(K)-FALTNDNG/NSTEP/RHO(k)
+!      NG3DTEN(K) = NG3DTEN(K)-FALTNDNG/NSTEP/RHO(k)
+      zgsten(k) = zgsten(k)-faltndzg/nstep
+      zrsten(k) = zrsten(k)-faltndzr/nstep
+      zssten(k) = zssten(k)-faltndzs/nstep
 
       DUMR(K) = DUMR(K)-FALTNDR*DT/NSTEP
       DUMI(K) = DUMI(K)-FALTNDI*DT/NSTEP
@@ -3608,6 +3771,10 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       DUMFNC(K) = DUMFNC(K)-FALTNDNC*DT/NSTEP
       DUMG(K) = DUMG(K)-FALTNDG*DT/NSTEP
       DUMFNG(K) = DUMFNG(K)-FALTNDNG*DT/NSTEP
+
+      DUMZG(K) = DUMZG(K)-FALTNDZG*DT/NSTEP
+      DUMZR(K) = DUMZR(K)-FALTNDZR*DT/NSTEP
+      DUMZS(K) = DUMZS(K)-FALTNDZS*DT/NSTEP
 
       DO K = KTE-1,KTS,-1
       FALTNDR = (FALOUTR(K+1)-FALOUTR(K))/DZQ(K)
@@ -3621,18 +3788,29 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       FALTNDG = (FALOUTG(K+1)-FALOUTG(K))/DZQ(K)
       FALTNDNG = (FALOUTNG(K+1)-FALOUTNG(K))/DZQ(K)
 
+      FALTNDZG = (FALOUTZG(K+1)-FALOUTZG(K))/DZQ(K)
+      FALTNDZR = (FALOUTZR(K+1)-FALOUTZR(K))/DZQ(K)
+      FALTNDZS = (FALOUTZS(K+1)-FALOUTZS(K))/DZQ(K)
+
 ! ADD FALLOUT TERMS TO EULERIAN TENDENCIES
 
       QRSTEN(K) = QRSTEN(K)+FALTNDR/NSTEP/RHO(k)
       QISTEN(K) = QISTEN(K)+FALTNDI/NSTEP/RHO(k)
       NI3DTEN(K) = NI3DTEN(K)+FALTNDNI/NSTEP/RHO(k)
       QNISTEN(K) = QNISTEN(K)+FALTNDS/NSTEP/RHO(k)
-      NS3DTEN(K) = NS3DTEN(K)+FALTNDNS/NSTEP/RHO(k)
-      NR3DTEN(K) = NR3DTEN(K)+FALTNDNR/NSTEP/RHO(k)
+      NSSTEN(K) = NSSTEN(K)+FALTNDNS/NSTEP/RHO(k)
+!      NS3DTEN(K) = NS3DTEN(K)+FALTNDNS/NSTEP/RHO(k)
+      NRSTEN(K) = NRSTEN(K)+FALTNDNR/NSTEP/RHO(k)
+!      NR3DTEN(K) = NR3DTEN(K)+FALTNDNR/NSTEP/RHO(k)
       QCSTEN(K) = QCSTEN(K)+FALTNDC/NSTEP/RHO(k)
       NC3DTEN(K) = NC3DTEN(K)+FALTNDNC/NSTEP/RHO(k)
       QGSTEN(K) = QGSTEN(K)+FALTNDG/NSTEP/RHO(k)
-      NG3DTEN(K) = NG3DTEN(K)+FALTNDNG/NSTEP/RHO(k)
+      NGSTEN(K) = NGSTEN(K)+FALTNDNG/NSTEP/RHO(k)
+!      NG3DTEN(K) = NG3DTEN(K)+FALTNDNG/NSTEP/RHO(k)
+
+      zGSTEN(K) = zGSTEN(K)+FALTNDzG/NSTEP
+      zrSTEN(K) = zrSTEN(K)+FALTNDzr/NSTEP
+      zsSTEN(K) = zsSTEN(K)+FALTNDzs/NSTEP
 
       DUMR(K) = DUMR(K)+FALTNDR*DT/NSTEP
       DUMI(K) = DUMI(K)+FALTNDI*DT/NSTEP
@@ -3644,6 +3822,10 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       DUMFNC(K) = DUMFNC(K)+FALTNDNC*DT/NSTEP
       DUMG(K) = DUMG(K)+FALTNDG*DT/NSTEP
       DUMFNG(K) = DUMFNG(K)+FALTNDNG*DT/NSTEP
+
+      DUMZG(K) = DUMZG(K)+FALTNDZG*DT/NSTEP
+      DUMZR(K) = DUMZR(K)+FALTNDZR*DT/NSTEP
+      DUMZS(K) = DUMZS(K)+FALTNDZS*DT/NSTEP
 
 ! FOR WRF-CHEM, NEED PRECIP RATES (UNITS OF KG/M^2/S)
 	  CSED(K)=CSED(K)+FALOUTC(K)/NSTEP
@@ -3666,6 +3848,78 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 
       END DO
 
+      IF ( sssflg >= 2 ) THEN
+      ! set ns (tendency) from zs and qs
+        DO K=KTE,KTs,-1
+          dum2 = nssten(k)
+          IF ( dumqs(k) >= qsmall .and. dumzs(k) > 1.e-30 ) THEN
+          ! DUMFNRsav(K) is the pre-sedimentation number conc
+          ! dumr(k) is the new mixing ratio
+          ! dumzr(k) is the 'new' reflectivity
+         
+          ! DUMZG(K) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/dumfng(k)
+          ! dumfng(k) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
+           dum = consg1*(DUMQS(K))**2*(6./(pi*1000.))**2/DUMZS(K)
+           nssten(k) = (dum/rho(k) - dumfnssav(k))/dt
+          ELSE
+            dum = 0
+            nssten(k) = 0.
+          ENDIF
+        IF ( sssflg >= 2 .and. its == 29 ) THEN
+        !  write(0,*) 'k,ns,zs,ns_new,nssten/o,nssave = ',k,dumfns(k)/rho(k),dumzs(k),dum/rho(k), & 
+        !    nssten(k),dum2,dumfnssav(k)
+        ENDIF
+        ENDDO
+      ENDIF
+
+      IF ( rssflg >= 2 ) THEN
+      ! set nr (tendency) from zr and qr
+        DO K=KTE,KTs,-1
+          dum2 = nrsten(k)
+          IF ( dumr(k) >= qsmall .and. dumzr(k) > 1.e-30 ) THEN
+          ! DUMFNRsav(K) is the pre-sedimentation number conc
+          ! dumr(k) is the new mixing ratio
+          ! dumzr(k) is the 'new' reflectivity
+         
+          ! DUMZG(K) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/dumfng(k)
+          ! dumfng(k) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
+           dum = consg1*(DUMR(K))**2*(6./(pi*1000.))**2/DUMZR(K)
+           nrsten(k) = (dum/rho(k) - dumfnrsav(k))/dt
+          ELSE
+            dum = 0
+            nrsten(k) = 0.
+          ENDIF
+        IF ( rssflg >= 2 .and. its == 29 ) THEN
+         ! write(0,*) 'k,nr,zr,nr_new,nrsten/o,nrsave = ',k,dumfnr(k)/rho(k),dumzr(k),dum/rho(k), & 
+         !   nrsten(k),dum2,dumfnrsav(k)
+        ENDIF
+        ENDDO
+      ENDIF
+
+      IF ( hssflg >= 2 ) THEN
+      ! set ng (tendency) from zg and qg
+        DO K=KTE,KTs,-1
+          dum2 = ngsten(k)
+          IF ( dumg(k) >= qsmall .and. dumzg(k) > 1.e-30 ) THEN
+          ! DUMFNRsav(K) is the pre-sedimentation number conc
+          ! dumr(k) is the new mixing ratio
+          ! dumzr(k) is the 'new' reflectivity
+         
+          ! DUMZG(K) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/dumfng(k)
+          ! dumfng(k) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
+           dum = consg1*(DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
+           ngsten(k) = (dum/rho(k) - dumfngsav(k))/dt
+          ELSE
+            dum = 0
+            ngsten(k) = 0.
+          ENDIF
+        IF ( hssflg >= 2 .and. its == 29 ) THEN
+         ! write(0,*) 'k,nr,zr,nr_new,nrsten/o,nrsave = ',k,dumfnr(k)/rho(k),dumzr(k),dum/rho(k), & 
+         !   nrsten(k),dum2,dumfnrsav(k)
+        ENDIF
+        ENDDO
+      ENDIF
+
         DO K=KTS,KTE
 
 ! ADD ON SEDIMENTATION TENDENCIES FOR MIXING RATIO TO REST OF TENDENCIES
@@ -3675,6 +3929,10 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
         QC3DTEN(K)=QC3DTEN(K)+QCSTEN(K)
         QG3DTEN(K)=QG3DTEN(K)+QGSTEN(K)
         QNI3DTEN(K)=QNI3DTEN(K)+QNISTEN(K)
+
+        NS3DTEN(K) = NS3DTEN(K)+NSSTEN(K)
+        NR3DTEN(K) = NR3DTEN(K)+NRSTEN(K)
+        NG3DTEN(K) = NG3DTEN(K)+NGSTEN(K)
 
 ! PUT ALL CLOUD ICE IN SNOW CATEGORY IF MEAN DIAMETER EXCEEDS 2 * dcs
 
@@ -4050,7 +4308,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 ! SWITCH FOR CONSTANT DROPLET NUMBER
           IF (iinum.EQ.1) THEN 
 ! CHANGE NDCNST FROM CM-3 TO KG-1
-             NC3D(K) = NDCNST*1.E6/RHO(K)
+             NC3D(K) = NDCNST*1.E6/rhosu ! RHO(K)
           END IF
 
       END DO !!! K LOOP
@@ -4623,11 +4881,11 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 !.. routines).
 !+---+-----------------------------------------------------------------+
 
-      if (melti .and. k_0.ge.kts+1) then
+      if (melti .and. k_0.ge.kts+1 ) then
        do k = k_0-1, kts, -1
 
 !..Reflectivity contributed by melting snow
-          if (L_qs(k) .and. L_qs(k_0) ) then
+          if (L_qs(k) .and. L_qs(k_0) .and. morr_dbzsoaks ) then
            fmelt_s = MAX(0.005d0, MIN(1.0d0-rs(k)/rs(k_0), 0.99d0))
            eta = 0.d0
            lams = 1./ilams(k)
@@ -4647,7 +4905,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 
 !..Reflectivity contributed by melting graupel
 
-          if (L_qg(k) .and. L_qg(k_0) ) then
+          if (L_qg(k) .and. L_qg(k_0) .and. morr_dbzsoakg ) then
            fmelt_g = MAX(0.005d0, MIN(1.0d0-rg(k)/rg(k_0), 0.99d0))
            eta = 0.d0
            lamg = 1./ilamg(k)
