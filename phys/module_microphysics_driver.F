@@ -840,7 +840,7 @@ REAL, DIMENSION( ims:ime, kms:kme, jms:jme ),                        &
    ENDIF
 
 ! set this to true to print out the global max/min for W on each time step.
-   IF ( .false. ) THEN
+   IF ( .true. ) THEN
       wmax = maxval( w(ips:ipe,kps:kpe,jps:jpe) )
       wmin = minval( w(ips:ipe,kps:kpe,jps:jpe) )
 #if ( defined(DM_PARALLEL)  &&   ! defined(STUBMPI) )

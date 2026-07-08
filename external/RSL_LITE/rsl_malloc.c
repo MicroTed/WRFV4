@@ -76,7 +76,10 @@
 #ifndef MACOS
 # include <malloc.h>
 #else
+/* MacOS: if using gnu gcc, then stdlib is enough, otherwise can use malloc for clang */
+#ifdef __clang__
 # include <malloc/malloc.h>
+#endif
 #endif
 #ifdef T3D
 #include <errno.h>
