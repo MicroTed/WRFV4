@@ -107,8 +107,8 @@ MODULE MODULE_MP_MORR_TWO_MOMENT
    integer :: sssflg = 1   ! As above but for snow
    integer :: hssflg = 1   ! As above but for graupel
    integer, private :: irainvt = 0  ! switch for rain fall speed for sedimentation:
-   logical :: morr_dbzsoaks = .false. ! Turn on/off wet snow reflectivity
-   logical :: morr_dbzsoakg = .false. ! Turn on/off wet graupel reflectivity
+   logical :: morr_dbzsoaks = .true. ! Turn on/off wet snow reflectivity
+   logical :: morr_dbzsoakg = .true. ! Turn on/off wet graupel reflectivity
    integer :: morr_vtlim = 1 ! Fall speed limits in Morr scheme: 0=off, 1=on (default),
                             ! 2=on for rates only, 3=on for sed only
                             ! note that r/s/hssflg = 2 turns off limits for sedimentation
@@ -267,7 +267,7 @@ CONTAINS
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 SUBROUTINE MORR_TWO_MOMENT_INIT(morr_rimed_ice, morr_dnr_max, morr_irainvt, &
                                 morr_ndcnst, morr_dng_max, &
-                                morr_rssflg,morr_sssflg,morr_hssflg ) ! RAS  
+                                morr_rssflg,morr_sssflg,morr_hssflg, morr_dbzsoak ) ! RAS  
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! THIS SUBROUTINE INITIALIZES ALL PHYSICAL CONSTANTS AMND PARAMETERS 
 ! NEEDED BY THE MICROPHYSICS SCHEME.
@@ -278,6 +278,7 @@ SUBROUTINE MORR_TWO_MOMENT_INIT(morr_rimed_ice, morr_dnr_max, morr_irainvt, &
 
       INTEGER, INTENT(IN):: morr_rimed_ice, morr_irainvt,  &
                             morr_rssflg,morr_sssflg,morr_hssflg
+      LOGICAL, INTENT(IN) :: morr_dbzsoak
       real, intent(in) :: morr_dnr_max, morr_dng_max, morr_ndcnst ! RAS  
 
       integer n,i
@@ -304,6 +305,8 @@ SUBROUTINE MORR_TWO_MOMENT_INIT(morr_rimed_ice, morr_dnr_max, morr_irainvt, &
       sssflg = morr_sssflg
       hssflg = morr_hssflg
       irainvt = morr_irainvt
+      morr_dbzsoaks = morr_dbzsoak
+      morr_dbzsoakg = morr_dbzsoak
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! NOTE, THE FOLLOWING OPTIONS RELATED TO DROPLET ACTIVATION 
@@ -1199,7 +1202,8 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 
 ! FALL SPEED WORKING VARIABLES (DEFINED IN CODE)
 
-      REAL, DIMENSION(KTS:KTE) ::    DUMI,DUMR,DUMFNI,DUMG,DUMFNG,DUMZS,DUMZG,DUMZR,DUMFNGsav,DUMFNRsav
+      REAL, DIMENSION(KTS:KTE) ::    DUMI,DUMR,DUMFNI,DUMG,DUMFNG,DUMZS,DUMZG,DUMZR,  &
+                                     DUMZSsav,DUMZGsav,DUMZRsav,DUMFNGsav,DUMFNRsav
       REAL UNI, UMI,UMR
       REAL, DIMENSION(KTS:KTE) ::    FR, FI, FNI,FG,FNG
       REAL RGVM
@@ -1229,7 +1233,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 
 ! DUMMY VARIABLES
 
-     REAL DUM,DUM1,DUM2,DUMT,DUMQV,DUMQSS,DUMQSI,DUMS
+     REAL DUM,DUM1,DUM2,DUMT,DUMQV,DUMQSS,DUMQSI,DUMS,ztmp
 
 ! PROGNOSTIC SUPERSATURATION
 
@@ -1250,7 +1254,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 
 ! COUNTING/INDEX VARIABLES
 
-     INTEGER K,NSTEP,N ! ,I
+     INTEGER K,NSTEP,N,KM1 ! ,I
 
 ! LTRUE IS ONLY USED TO SPEED UP THE CODE !!
 ! LTRUE, SWITCH = 0, NO HYDROMETEORS IN COLUMN, 
@@ -3531,11 +3535,13 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
           UZR = UMR
           DUMZR(K) = 0.0
         ENDIF
+        dumzrsav(k) = dumzr(k)
       ELSE
       UMR = 0.
       UNR = 0.
       UZR = 0.
       DUMZR(K) = 0.0
+      dumzrsav(k) = dumzr(k)
       END IF
       IF( rssflg >= 2 .and. its == 29 ) THEN
       !  write(0,*) 'k,qr,nr,zr,uzr,umr = ',k,dumr(k),dumfnr(k),dumzr(k),uzr,umr
@@ -3559,6 +3565,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       dumzs(k) = 0.
       UZS = 0.
       END IF
+      dumzssav(k) = dumzs(k)
       IF( sssflg >= 2 .and. its == 29 ) THEN
       !  write(0,*) 'k,qs,ns,zs,uzs,ums = ',k,dumqs(k),dumfns(k),dumzs(k),uzs,ums,uns
       ENDIF
@@ -3574,7 +3581,8 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 ! !             z(ix,kz,l)  = 1.e18*zx*(6./(pi*1000.))**2
 !              z(ix,kz,l)  = zx*(6./(pi*1000.))**2
           dum = consg1*(rho(k)*DUMG(K))**2/(rho(k)*dumfng(k))
-          DUMZG(K) = dum*(6./(pi*1000.))**2
+          DUMZG(K) = dum*(6./(pi*1000.))**2 ! 1000. is a density, which technically should be RHOG, but it is 
+                                            ! factored back out when number conc. is diagnosed, so could have c=1
         ELSE
           UNG = UMG
           UZG = UMG
@@ -3586,6 +3594,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       UZG = 0.
       DUMZG(K) = 0.0
       END IF
+      dumzgsav(k) = dumzg(k)
 
 ! SET REALISTIC LIMITS ON FALLSPEED
 
@@ -3846,21 +3855,25 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
         SNOWPRT = SNOWPRT+(FALOUTI(KTS)+FALOUTS(KTS))*DT/NSTEP
         GRPLPRT = GRPLPRT+(FALOUTG(KTS))*DT/NSTEP
 
-      END DO
+      END DO ! n steps
 
+      ! It is not clear whether this correction works correctly for NSTEP > 1
       IF ( sssflg >= 2 ) THEN
       ! set ns (tendency) from zs and qs
         DO K=KTE,KTs,-1
           dum2 = nssten(k)
-          IF ( dumqs(k) >= qsmall .and. dumzs(k) > 1.e-30 ) THEN
+          IF ( dumqs(k) >= qsmall .and. dumzs(k) > 1.e-30  ) THEN
           ! DUMFNRsav(K) is the pre-sedimentation number conc
           ! dumr(k) is the new mixing ratio
           ! dumzr(k) is the 'new' reflectivity
-         
           ! DUMZG(K) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/dumfng(k)
           ! dumfng(k) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
-           dum = consg1*(DUMQS(K))**2*(6./(pi*1000.))**2/DUMZS(K)
-           nssten(k) = (dum/rho(k) - dumfnssav(k))/dt
+!            IF (  dumzssav(min(kte,k+1)) > dumzssav(k) ) THEN
+           km1 = Max(1,k-1)
+            IF ( dumzs(km1) > dumzssav(km1) ) THEN
+              dum = consg1*(DUMQS(K))**2*(6./(pi*1000.))**2/DUMZS(K)
+              nssten(k) = (dum/rho(k) - dumfnssav(k))/dt
+            ENDIF
           ELSE
             dum = 0
             nssten(k) = 0.
@@ -3883,8 +3896,12 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
          
           ! DUMZG(K) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/dumfng(k)
           ! dumfng(k) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
-           dum = consg1*(DUMR(K))**2*(6./(pi*1000.))**2/DUMZR(K)
-           nrsten(k) = (dum/rho(k) - dumfnrsav(k))/dt
+!            IF ( dumzrsav(min(kte,k+1)) > dumzrsav(k) ) THEN
+           km1 = Max(1,k-1)
+            IF ( dumzr(km1) > dumzrsav(km1) ) THEN
+              dum = consg1*(DUMR(K))**2*(6./(pi*1000.))**2/DUMZR(K)
+              nrsten(k) = (dum/rho(k) - dumfnrsav(k))/dt
+            ENDIF
           ELSE
             dum = 0
             nrsten(k) = 0.
@@ -3904,11 +3921,16 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
           ! DUMFNRsav(K) is the pre-sedimentation number conc
           ! dumr(k) is the new mixing ratio
           ! dumzr(k) is the 'new' reflectivity
-         
+           ! dum2 = 
+           ! ztmp = consg1*(DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
           ! DUMZG(K) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/dumfng(k)
           ! dumfng(k) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
-           dum = consg1*(DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
-           ngsten(k) = (dum/rho(k) - dumfngsav(k))/dt
+           km1 = Max(1,k-1)
+          !  IF ( dumzgsav(min(kte,k+1)) > dumzgsav(k) ) THEN
+            IF ( dumzg(km1) > dumzgsav(km1) ) THEN
+              dum = consg1*(DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
+              ngsten(k) = (dum/rho(k) - dumfngsav(k))/dt
+            ENDIF
           ELSE
             dum = 0
             ngsten(k) = 0.

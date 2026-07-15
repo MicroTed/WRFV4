@@ -4783,7 +4783,8 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
          CALL morr_two_moment_init( config_flags%morr_rimed_ice, config_flags%morr_dnr_max, &
                                     config_flags%morr_irainvt, config_flags%morr_ndcnst, &
                                     config_flags%morr_dng_max, config_flags%morr_rssflg, &
-                                    config_flags%morr_sssflg, config_flags%morr_hssflg )
+                                    config_flags%morr_sssflg, config_flags%morr_hssflg,  &
+                                    morr_dbzsoak = config_flags%morr_dbzsoak )
 #if (EM_CORE==1)
      CASE (MORR_TM_AERO)
          CALL morr_two_moment_init_aero( config_flags%morr_rimed_ice )
