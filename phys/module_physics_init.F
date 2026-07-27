@@ -4777,7 +4777,9 @@ CALL lsm_mosaic_init(IVGTYP,config_flags%ISWATER,config_flags%ISURBAN,config_fla
          if (config_flags%tempo_aerosolaware == 1) config_tempo_aerosolaware = .true.
          if (config_flags%tempo_hailaware == 1) config_tempo_hailaware = .true.
          CALL tempo_init(aerosolaware_flag=config_tempo_aerosolaware, &
-             hailaware_flag=config_tempo_hailaware, tempo_cfgs=tempo_cfgs)
+             hailaware_flag=config_tempo_hailaware, tempo_cfgs=tempo_cfgs, &
+             rssflg=config_flags%tempo_rssflg, hssflg=config_flags%tempo_hssflg, &
+             igrfallopt=config_flags%tempo_igrfallopt)
 
      CASE (MORR_TWO_MOMENT)
          CALL morr_two_moment_init( config_flags%morr_rimed_ice, config_flags%morr_dnr_max, &

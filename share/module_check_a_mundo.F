@@ -2530,6 +2530,18 @@
       END IF
 
 !-----------------------------------------------------------------------
+! check default graupel size limit in Morrison 2-moment
+!-----------------------------------------------------------------------
+      IF ( model_config_rec%mp_physics(1) == MORR_TWO_MOMENT ) THEN
+        IF ( model_config_rec%morr_hssflg <= 1 ) THEN
+          IF ( model_config_rec%morr_dng_max < 0 ) model_config_rec%morr_dng_max = Abs(model_config_rec%morr_dng_max)
+        ELSE
+          ! Allow larger default Dmax for graupel with pseudo 3-mom sedimentation
+          IF ( model_config_rec%morr_dng_max < 0 ) model_config_rec%morr_dng_max = 10000.e6 
+        ENDIF
+      ENDIF
+
+!-----------------------------------------------------------------------
 !  Set aer_init_opt for Thompson-MP-Aero (mp_physics=28) AND rcon mp (mp_physics=29)
 !-----------------------------------------------------------------------
       IF ( model_config_rec%mp_physics(1) .ne. TEMPO ) THEN
@@ -2540,6 +2552,13 @@
         IF ( model_config_rec%tempo_hailaware .EQ. 1) THEN
           ! not using TEMPO, so set tempo_hailaware=0
           model_config_rec%tempo_hailaware = 0
+        ENDIF
+      ELSE ! == TEMPO; set defaults if values are -1
+        IF ( model_config_rec%tempo_aerosolaware .EQ. -1 ) THEN
+          model_config_rec%tempo_aerosolaware = 1
+        ENDIF
+        IF ( model_config_rec%tempo_hailaware .EQ. -1) THEN
+          model_config_rec%tempo_hailaware = 1
         ENDIF
       ENDIF
 

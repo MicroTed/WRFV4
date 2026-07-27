@@ -2443,8 +2443,11 @@ rconfig   integer  nssl_3moment           namelist,physics      1             0 
 rconfig   integer  nssl_density_on        namelist,physics      1            -1       rh       "NSSL graupel/hail density flag"  ""      ""
 rconfig   integer  nssl_ssat_output       namelist,physics      1             0       rh       "NSSL ssat output flag"  ""      ""
 
-rconfig   integer  tempo_aerosolaware     namelist,physics      1             0       rh       "TEMPO aerosol-aware flag"  ""      ""
-rconfig   integer  tempo_hailaware        namelist,physics      1             0       rh       "TEMPO hail-aware flag"  ""      ""
+rconfig   integer  tempo_aerosolaware     namelist,physics      1            -1       rh       "TEMPO aerosol-aware flag"  ""      ""
+rconfig   integer  tempo_hailaware        namelist,physics      1            -1       rh       "TEMPO hail-aware flag"  ""      ""
+rconfig   integer  tempo_rssflg           namelist,physics      1             1       rh       "TEMPO rain sedimentation flag"  ""      ""
+rconfig   integer  tempo_hssflg           namelist,physics      1             1       rh       "TEMPO graupel/hail sedimentation flag"  ""      ""
+rconfig   integer  tempo_igrfallopt       namelist,physics      1             1       rh       "TEMPO graupel sedimentation fall speed option"  ""      ""
 
 rconfig   integer     CCNTY               namelist,physics      1            2        rh       "Aerosol background type for NTU microphysics"  ""   ""
 

@@ -21,4 +21,5 @@
 	url = https://github.com/NOAA-GSL/GFL
 [submodule "phys/TEMPO"]
 	path = phys/TEMPO
-	url = https://github.com/NCAR/TEMPO.git
+	url = https://github.com/MicroTed/TEMPO.git
+#	url = https://github.com/NCAR/TEMPO.git

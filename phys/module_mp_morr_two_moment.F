@@ -1202,8 +1202,8 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 
 ! FALL SPEED WORKING VARIABLES (DEFINED IN CODE)
 
-      REAL, DIMENSION(KTS:KTE) ::    DUMI,DUMR,DUMFNI,DUMG,DUMFNG,DUMZS,DUMZG,DUMZR,  &
-                                     DUMZSsav,DUMZGsav,DUMZRsav,DUMFNGsav,DUMFNRsav
+      REAL, DIMENSION(KTS:KTE) ::    DUMI,DUMR,DUMFNI,DUMG,DUMFNG,DUMZS,DUMZG,DUMZR, &
+     &   DUMFNGG,DUMZSsav,DUMZGsav,DUMZRsav,DUMFNGsav,DUMFNRsav
       REAL UNI, UMI,UMR
       REAL, DIMENSION(KTS:KTE) ::    FR, FI, FNI,FG,FNG
       REAL RGVM
@@ -1211,8 +1211,8 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       REAL FALTNDR,FALTNDI,FALTNDNI,RHO2
       REAL, DIMENSION(KTS:KTE) ::   DUMQS,DUMFNS,DUMFNSsav
       REAL UMS,UNS
-      REAL, DIMENSION(KTS:KTE) ::   FS,FNS, FALOUTS,FALOUTNS,FALOUTG,FALOUTNG
-      REAL FALTNDS,FALTNDNS,UNR,FALTNDG,FALTNDNG,FALTNDZG,FALTNDZR,faltndzs
+      REAL, DIMENSION(KTS:KTE) ::   FS,FNS, FALOUTS,FALOUTNS,FALOUTG,FALOUTNG,FALOUTNGG
+      REAL FALTNDS,FALTNDNS,UNR,FALTNDG,FALTNDNG,FALTNDNGG,FALTNDZG,FALTNDZR,faltndzs
       REAL, DIMENSION(KTS:KTE) ::    DUMC,DUMFNC
       REAL UNC,UMC,UNG,UMG,UZG,UZR,UZS
       REAL, DIMENSION(KTS:KTE) ::   FC,FALOUTC,FALOUTNC
@@ -3424,6 +3424,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
         DUMG(K) = QG3D(K)+QG3DTEN(K)*DT
         DUMFNG(K) = NG3D(K)+NG3DTEN(K)*DT
         DUMFNGsav(K) = Max(0.,DUMFNG(K))
+        DUMFNGG(k) = Max(0.,DUMFNG(K))
         DUMFNRsav(K) = Max(0.,DUMFNR(K))
         DUMFNSsav(K) = Max(0.,DUMFNS(K))
 
@@ -3512,7 +3513,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       END IF
 
       IF (DUMR(K).GE.QSMALL) THEN
-        
+
         IF ( irainvt == 0 ) THEN
           UMR = ARN(K)*CONS4/(DLAMR**BR)
         ELSE
@@ -3547,13 +3548,16 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       !  write(0,*) 'k,qr,nr,zr,uzr,umr = ',k,dumr(k),dumfnr(k),dumzr(k),uzr,umr
       ENDIF
 
+      UZS = 0.0 
       IF (DUMQS(K).GE.QSMALL) THEN
       UMS = ASN(K)*CONS3/(DLAMS**BS)
         IF ( sssflg >= 1 ) THEN
           UNS = ASN(K)*CONS5/DLAMS**BS
-          UZS = ASN(K)*CONS5z/(DLAMS**BS)
-          dum = consg1*(rho(k)*DUMQS(K))**2/(rho(k)*dumfns(k))
-          DUMZS(K) = dum*(6./(pi*1000.))**2
+          IF ( sssflg >= 2 ) THEN 
+            UZS = ASN(K)*CONS5z/(DLAMS**BS)
+            dum = consg1*(rho(k)*DUMQS(K))**2/(rho(k)*dumfns(k))
+            DUMZS(K) = dum*(6./(pi*1000.))**2
+          ENDIF
         ELSE
           UNS = UMS
           UZS = UMS
@@ -3570,19 +3574,20 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       !  write(0,*) 'k,qs,ns,zs,uzs,ums = ',k,dumqs(k),dumfns(k),dumzs(k),uzs,ums,uns
       ENDIF
 
+      UZG = 0.0
       IF (DUMG(K).GE.QSMALL) THEN
       UMG = AGN(K)*CONS7/(DLAMG**BG)
         IF ( hssflg >= 1 ) THEN
           UNG = AGN(K)*CONS8/DLAMG**BG
-          UZG = AGN(K)*CONS7z/(DLAMG**BG)
-!              g1 = (6.0 + alpha)*(5.0 + alpha)*(4.0 + alpha)/  &
-!      &            ((3.0 + alpha)*(2.0 + alpha)*(1.0 + alpha))
-!              zx = g1*db(ix,kz)**2*(a(ix,jy,kz,l))*a(ix,jy,kz,l)/chw
-! !             z(ix,kz,l)  = 1.e18*zx*(6./(pi*1000.))**2
-!              z(ix,kz,l)  = zx*(6./(pi*1000.))**2
-          dum = consg1*(rho(k)*DUMG(K))**2/(rho(k)*dumfng(k))
-          DUMZG(K) = dum*(6./(pi*1000.))**2 ! 1000. is a density, which technically should be RHOG, but it is 
+          IF ( hssflg >= 2 ) THEN
+            UZG = AGN(K)*CONS7z/(DLAMG**BG)
+            dum = consg1*(rho(k)*DUMG(K))**2/(rho(k)*dumfng(k))
+            DUMZG(K) = dum*(6./(pi*1000.))**2 ! 1000. is a density, which technically should be RHOG, but it is 
                                             ! factored back out when number conc. is diagnosed, so could have c=1
+
+          ELSE
+          !  DUMZG
+          ENDIF
         ELSE
           UNG = UMG
           UZG = UMG
@@ -3601,8 +3606,10 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 ! bug fix, 10/08/09
         dum=(rhosu/rho(k))**0.54
         IF ( morr_vtlim == 1 .or. morr_vtlim == 3 ) THEN
-          IF ( sssflg /= 2 ) THEN 
+          IF ( sssflg /= 2 ) THEN
+            ! apply Vt limits (if not using sssflg=2)
             IF ( sssflg == 3 .and. ums > 0. .and. uzs > 0. ) THEN
+              ! for sssflg=3, keep fall speed ratio for reflectivity
               dum2 = uzs/ums
             ELSE
               dum2 = 1.0
@@ -3616,7 +3623,9 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
         UMI=MIN(UMI,1.2*(rhosu/rho(k))**0.35)
         UNI=MIN(UNI,1.2*(rhosu/rho(k))**0.35)
           IF ( rssflg /= 2 ) THEN
+            ! apply Vt limits (if not using rssflg=2)
             IF ( rssflg == 3 .and. umr > 0. .and. uzr > 0. ) THEN
+              ! for rssflg=3, keep fall speed ratio for reflectivity
               dum2 = uzr/umr
             ELSE
               dum2 = 1.0
@@ -3626,7 +3635,9 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
              UZR=dum2*umr ! MIN(UZR,morr_maxur*dum)
           ENDIF
           IF ( hssflg /= 2 ) THEN
+            ! apply Vt limits (if not using hssflg=2)
             IF ( hssflg == 3 .and. umg > 0. .and. uzg > 0. ) THEN
+              ! for hssflg=3, keep fall speed ratio for reflectivity
               dum2 = uzg/umg
             ELSE
               dum2 = 1.0
@@ -3713,6 +3724,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       DUMFNC(k) = DUMFNC(K)*RHO(K)
       DUMG(k) = DUMG(K)*RHO(K)
       DUMFNG(k) = DUMFNG(K)*RHO(K)
+      DUMFNGG(k) = DUMFNGG(K)*RHO(K)
 
       END DO
 
@@ -3729,6 +3741,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       FALOUTNC(K) = FNC(K)*DUMFNC(K)
       FALOUTG(K) = FG(K)*DUMG(K)
       FALOUTNG(K) = FNG(K)*DUMFNG(K)
+      FALOUTNGG(K) = FG(K)*DUMFNGG(K)
 
       FALOUTZR(K) = FZR(K)*DUMZR(K)
       FALOUTZS(K) = FZS(K)*DUMZS(K)
@@ -3748,6 +3761,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       FALTNDNC = FALOUTNC(K)/DZQ(k)
       FALTNDG = FALOUTG(K)/DZQ(k)
       FALTNDNG = FALOUTNG(K)/DZQ(k)
+      FALTNDNGg = FALOUTNGg(K)/DZQ(k)
       FALTNDZG = FALOUTZG(K)/DZQ(k)
       FALTNDZR = FALOUTZR(K)/DZQ(k)
       FALTNDZS = FALOUTZS(K)/DZQ(k)
@@ -3780,6 +3794,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       DUMFNC(K) = DUMFNC(K)-FALTNDNC*DT/NSTEP
       DUMG(K) = DUMG(K)-FALTNDG*DT/NSTEP
       DUMFNG(K) = DUMFNG(K)-FALTNDNG*DT/NSTEP
+      DUMFNGG(K) = DUMFNGG(K)-FALTNDNGG*DT/NSTEP
 
       DUMZG(K) = DUMZG(K)-FALTNDZG*DT/NSTEP
       DUMZR(K) = DUMZR(K)-FALTNDZR*DT/NSTEP
@@ -3796,6 +3811,7 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       FALTNDNC = (FALOUTNC(K+1)-FALOUTNC(K))/DZQ(K)
       FALTNDG = (FALOUTG(K+1)-FALOUTG(K))/DZQ(K)
       FALTNDNG = (FALOUTNG(K+1)-FALOUTNG(K))/DZQ(K)
+      FALTNDNGG = (FALOUTNGG(K+1)-FALOUTNGG(K))/DZQ(K)
 
       FALTNDZG = (FALOUTZG(K+1)-FALOUTZG(K))/DZQ(K)
       FALTNDZR = (FALOUTZR(K+1)-FALOUTZR(K))/DZQ(K)
@@ -3831,10 +3847,11 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
       DUMFNC(K) = DUMFNC(K)+FALTNDNC*DT/NSTEP
       DUMG(K) = DUMG(K)+FALTNDG*DT/NSTEP
       DUMFNG(K) = DUMFNG(K)+FALTNDNG*DT/NSTEP
+      DUMFNGG(K) = DUMFNGG(K)+FALTNDNGG*DT/NSTEP
 
-      DUMZG(K) = DUMZG(K)+FALTNDZG*DT/NSTEP
-      DUMZR(K) = DUMZR(K)+FALTNDZR*DT/NSTEP
-      DUMZS(K) = DUMZS(K)+FALTNDZS*DT/NSTEP
+      IF ( hssflg > 1 ) DUMZG(K) = DUMZG(K)+FALTNDZG*DT/NSTEP
+      IF ( rssflg > 1 ) DUMZR(K) = DUMZR(K)+FALTNDZR*DT/NSTEP
+      IF ( sssflg > 1 ) DUMZS(K) = DUMZS(K)+FALTNDZS*DT/NSTEP
 
 ! FOR WRF-CHEM, NEED PRECIP RATES (UNITS OF KG/M^2/S)
 	  CSED(K)=CSED(K)+FALOUTC(K)/NSTEP
@@ -3859,9 +3876,8 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
 
       ! It is not clear whether this correction works correctly for NSTEP > 1
       IF ( sssflg >= 2 ) THEN
-      ! set ns (tendency) from zs and qs
+      ! overwrite ns (tendency) from zs and qs
         DO K=KTE,KTs,-1
-          dum2 = nssten(k)
           IF ( dumqs(k) >= qsmall .and. dumzs(k) > 1.e-30  ) THEN
           ! DUMFNRsav(K) is the pre-sedimentation number conc
           ! dumr(k) is the new mixing ratio
@@ -3869,26 +3885,20 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
           ! DUMZG(K) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/dumfng(k)
           ! dumfng(k) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
 !            IF (  dumzssav(min(kte,k+1)) > dumzssav(k) ) THEN
-           km1 = Max(1,k-1)
-            IF ( dumzs(km1) > dumzssav(km1) ) THEN
+            km1 = Max(1,k-1)
+            IF ( dumzs(km1) > dumzssav(km1) .or. (k > 1 .and. dumzssav(km1) < 1.e-28) ) THEN
               dum = consg1*(DUMQS(K))**2*(6./(pi*1000.))**2/DUMZS(K)
               nssten(k) = (dum/rho(k) - dumfnssav(k))/dt
             ENDIF
-          ELSE
-            dum = 0
-            nssten(k) = 0.
+!           ELSE
+!             nssten(k) = 0.
           ENDIF
-        IF ( sssflg >= 2 .and. its == 29 ) THEN
-        !  write(0,*) 'k,ns,zs,ns_new,nssten/o,nssave = ',k,dumfns(k)/rho(k),dumzs(k),dum/rho(k), & 
-        !    nssten(k),dum2,dumfnssav(k)
-        ENDIF
         ENDDO
       ENDIF
 
       IF ( rssflg >= 2 ) THEN
       ! set nr (tendency) from zr and qr
         DO K=KTE,KTs,-1
-          dum2 = nrsten(k)
           IF ( dumr(k) >= qsmall .and. dumzr(k) > 1.e-30 ) THEN
           ! DUMFNRsav(K) is the pre-sedimentation number conc
           ! dumr(k) is the new mixing ratio
@@ -3897,48 +3907,35 @@ END SUBROUTINE MP_MORR_TWO_MOMENT
           ! DUMZG(K) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/dumfng(k)
           ! dumfng(k) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
 !            IF ( dumzrsav(min(kte,k+1)) > dumzrsav(k) ) THEN
-           km1 = Max(1,k-1)
-            IF ( dumzr(km1) > dumzrsav(km1) ) THEN
+            km1 = Max(1,k-1)
+            IF ( dumzr(km1) > dumzrsav(km1) .or. (k > 1 .and. dumzrsav(km1) < 1.e-28) ) THEN
               dum = consg1*(DUMR(K))**2*(6./(pi*1000.))**2/DUMZR(K)
               nrsten(k) = (dum/rho(k) - dumfnrsav(k))/dt
             ENDIF
-          ELSE
-            dum = 0
-            nrsten(k) = 0.
+!           ELSE
+!             nrsten(k) = 0.
           ENDIF
-        IF ( rssflg >= 2 .and. its == 29 ) THEN
-         ! write(0,*) 'k,nr,zr,nr_new,nrsten/o,nrsave = ',k,dumfnr(k)/rho(k),dumzr(k),dum/rho(k), & 
-         !   nrsten(k),dum2,dumfnrsav(k)
-        ENDIF
         ENDDO
       ENDIF
 
       IF ( hssflg >= 2 ) THEN
       ! set ng (tendency) from zg and qg
         DO K=KTE,KTs,-1
-          dum2 = ngsten(k)
-          IF ( dumg(k) >= qsmall .and. dumzg(k) > 1.e-30 ) THEN
+          IF ( dumg(k) >= qsmall .and. dumzg(k) > 1.e-28 .and. DUMFNG(K) > qsmall) THEN
           ! DUMFNRsav(K) is the pre-sedimentation number conc
           ! dumr(k) is the new mixing ratio
           ! dumzr(k) is the 'new' reflectivity
-           ! dum2 = 
            ! ztmp = consg1*(DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
           ! DUMZG(K) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/dumfng(k)
           ! dumfng(k) = consg1*(rho(k)*DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
-           km1 = Max(1,k-1)
-          !  IF ( dumzgsav(min(kte,k+1)) > dumzgsav(k) ) THEN
-            IF ( dumzg(km1) > dumzgsav(km1) ) THEN
+            km1 = Max(1,k-1)
+            IF ( dumzg(km1) > dumzgsav(km1) .or. (k > 1 .and. dumzgsav(km1) < 1.e-28) ) THEN
               dum = consg1*(DUMG(K))**2*(6./(pi*1000.))**2/DUMZG(K)
               ngsten(k) = (dum/rho(k) - dumfngsav(k))/dt
             ENDIF
-          ELSE
-            dum = 0
-            ngsten(k) = 0.
+!           ELSE
+!             ngsten(k) = 0.
           ENDIF
-        IF ( hssflg >= 2 .and. its == 29 ) THEN
-         ! write(0,*) 'k,nr,zr,nr_new,nrsten/o,nrsave = ',k,dumfnr(k)/rho(k),dumzr(k),dum/rho(k), & 
-         !   nrsten(k),dum2,dumfnrsav(k)
-        ENDIF
         ENDDO
       ENDIF
 
