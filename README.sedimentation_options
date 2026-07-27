@@ -1,12 +1,25 @@
 Options for pseudo-3-moment sedimentation in Morrison (10) and TEMPO (88) schemes. Set ssflg=2 for reflectivity conservation
 
+Morr_2moment (mp_physics=10, but NOT 40):
  morr_rssflg                         = 1       ! rain sedimentation flag (mp_physics=10): 1 - original, 2 = psuedo 3-moment
  morr_sssflg                         = 1       ! snow sedimentation flag (mp_physics=10): 1 - original, 2 = psuedo 3-moment
  morr_hssflg                         = 1       ! graupel sedimentation flag (mp_physics=10): 1 - original, 2 = psuedo 3-moment
  morr_dng_max                        = 2000.e-6 ! Max graupel Dn for mp_physics=10 : set larger (10.e-3) for morr_hssflg=2
 
+Recommended: 
+morr_rssflg   = 2
+morr_sssflg   = 2
+morr_hssflg   = 2
+morr_dng_max  = 5.e-3 (up to, say 10.e-3)
+
+----------------------------
+TEMPO (mp_physics=88):
+
  tempo_rssflg                        = 1       ! rain sedimentation flag (mp_physics=88): 1 - original, 2 = psuedo 3-moment
  tempo_hssflg                        = 1       ! graupel sedimentation flag (mp_physics=88): 1 - original, 2 = psuedo 3-moment
  tempo_igrfallopt                    = 1       ! TEMPO graupel sedimentation fall speed option (mp_physics=88): 1 - original, 
                                                ! 3 = consistent with process rates (TM recommends 3); 2 = experiment, do not use
-
+Recommended:
+tempo_rssflg     = 2 
+tempo_hssflg     = 2 
+tempo_igrfallopt = 3 
