@@ -5,8 +5,8 @@
 !! author Songyou Hong [hong@ucar.edu, songyouhong@gmail.com]
 !!
   module module_mp_udm
-   use module_mp_radar
-   use module_gfs_machine , only : kind_phys
+  use module_mp_radar
+  use module_gfs_machine , only : kind_phys
 !
 !-------------------------------------------------------------------------------
 ! parameters for microphysical processes
@@ -944,6 +944,7 @@ subroutine udm2d(t1, q1                                          &
    psmlt(:) = 0.     ; pgmlt(:) = 0.     ; pseml(:) = 0. ; pgeml(:) = 0.
    prevp(:) = 0.     ; psevp(:) = 0.     ; pgevp(:) = 0.
    denqr(:) = 0.     ; denqs(:) = 0.     ; denqi(:) = 0.
+   denqh(:) = 0.     ; denqg(:) = 0.
    vtr(:)   = 0.     ; vts(:)   = 0.     ; vtg(:)   = 0. ; vti(:)   = 0.
    qrpath   = 0.     ; qspath   = 0.     ; qgpath   = 0. ; qipath   = 0.
    precip_r = 0.     ; precip_s = 0.     ; precip_g = 0. ; precip_i = 0.
@@ -1955,7 +1956,7 @@ subroutine udm2d(t1, q1                                          &
    do k = ktop, kts, -1
      if(ifice(k)) then
        if(supsat(k)>0 .and. (.not.ifsat(k))) then
-         supice(k) = satrdt(k)-prevp(k)-pidep(k)-psdep(k)-pgdep(k)
+         supice(k) = satrdt(k)-prevp(k)-pidep(k)-psdep(k)-pgdep(k)-phdep(k)
          if(slimsk(i)==0) then
            ni0(k) = 1000.*exp(-0.2*tcelci(k)-5.)
          else if(slimsk(i)==1) then
@@ -2532,7 +2533,7 @@ subroutine udm2d(t1, q1                                          &
 !
      do n = 1, niter
        do k = ktop, kts, -1
-         if(qrs(k,i,1)>qrmin) then
+         if(qrs(k,i,1)>0.) then
            denqr(k) = dend(k,i)*qrs(k,i,1)
            denqn(k) = dend(k,i)*ncr(k,i,3)
          else
@@ -2548,13 +2549,8 @@ subroutine udm2d(t1, q1                                          &
        call semi_lagrangian(1,kdim,max(ktop,2),dend(:,i),denfac(:,i),t(:,i),   &
             delz(:,i),vtn(:),denqn(:),qnpath,dtcfl,lat,i)
        do k = ktop, kts, -1
-         if(denqr(k)>qrmin) then
-           qrs(k,i,1) = max(denqr(k)/dend(k,i),0.)
-           ncr(k,i,3) = max(denqn(k)/dend(k,i),0.)
-         else
-           qrs(k,i,1) = 0.0
-           ncr(k,i,3) = 0.0
-         endif
+         qrs(k,i,1) = max(denqr(k)/dend(k,i),0.)
+         ncr(k,i,3) = max(denqn(k)/dend(k,i),0.)
        enddo
 !
        precip_r = qrpath/dtcld + precip_r   ! [kgm-2s-1]

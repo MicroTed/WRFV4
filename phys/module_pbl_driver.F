@@ -51,7 +51,7 @@ CONTAINS
                  ,dqke,qWT,qSHEAR,qBUOY,qDISS,tke_budget           &
                  ,bl_mynn_closure,bl_mynn_cloudpdf                 &
                  ,bl_mynn_mixlength                                &
-                 ,icloud_bl,qc_bl,qi_bl,cldfra_bl                  &
+                 ,qc_bl,qi_bl,cldfra_bl                            &
                  ,bl_mynn_edmf,bl_mynn_edmf_dd                     &
                  ,bl_mynn_edmf_mom,bl_mynn_edmf_tke                &
                  ,bl_mynn_mixscalars,bl_mynn_mixaerosols           &
@@ -64,6 +64,8 @@ CONTAINS
                  ,vdfg                                             &
                  ,maxwidth,maxMF,ztop_plume                        &
                  ,excess_h,excess_q                                &
+                 ,maxmf_dd,maxwidth_dd,maxtkeprod                  &
+                 ,cldtop_cooling,ent_eff                           &
                  ,spp_pbl,pattern_spp_pbl                          &
               ! EEPS
                  ,pek,pep,pek_adv,pep_adv                          &
@@ -603,7 +605,6 @@ CONTAINS
                                      bl_mynn_cloudmix,         &
                                      bl_mynn_mixqt,            &
                                      bl_mynn_ess,              &
-                                     icloud_bl,                &
                                      tke_budget
 
    REAL, OPTIONAL, INTENT(IN)  :: bl_mynn_closure
@@ -615,8 +616,9 @@ CONTAINS
    REAL, DIMENSION( ims:ime , jms:jme ), OPTIONAL,              &
         &    INTENT(INOUT)::                               vdfg
    REAL, OPTIONAL, DIMENSION( ims:ime , jms:jme ),              &
-        &    INTENT(OUT) ::           maxwidth,maxMF,ztop_plume,&
-                                              excess_h,excess_q
+        &    INTENT(OUT) ::          maxwidth,maxMF,ztop_plume, &
+                    maxmf_dd,maxtkeprod,cldtop_cooling,ent_eff, &
+                                 maxwidth_dd,excess_h,excess_q
 
     REAL, OPTIONAL, DIMENSION( ims:ime, kms:kme, jms:jme ),     &
            INTENT(INOUT) ::         qnwfa_curr,qnifa_curr,qnbca_curr
@@ -1728,14 +1730,15 @@ CONTAINS
                    &sub_thl3D=sub_thl3D,sub_sqv3D=sub_sqv3D,             &
                    &det_thl3D=det_thl3D,det_sqv3D=det_sqv3D,             &
                    &maxwidth=maxwidth,maxMF=maxMF,                       &
-                   &ztop_plume=ztop_plume,                               &
+                   &ztop_plume=ztop_plume,maxmf_dd=maxmf_dd,             &
+                   &maxtkeprod=maxtkeprod,cldtop_cooling=cldtop_cooling, &
+                   &ent_eff=ent_eff,maxwidth_dd=maxwidth_dd,             &
                    &excess_h=excess_h,excess_q=excess_q,                 &
                    &RTHRATEN=RTHRATEN,                                   &
                    &bl_mynn_tkeadvect=bl_mynn_tkeadvect,                 &
                    &tke_budget=tke_budget,                               &
                    &bl_mynn_cloudpdf=bl_mynn_cloudpdf,                   &
                    &bl_mynn_mixlength=bl_mynn_mixlength,                 &
-                   &icloud_bl=icloud_bl,                                 &
                    &bl_mynn_edmf=bl_mynn_edmf,                           &
                    &bl_mynn_edmf_dd=bl_mynn_edmf_dd,                     &
                    &bl_mynn_edmf_mom=bl_mynn_edmf_mom,                   &

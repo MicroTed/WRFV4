@@ -1155,6 +1155,11 @@ state   real   maxwidth         ij     misc        1         -      h         "m
 state   real   ztop_plume       ij     misc        1         -      h         "ztop_plume"       "Height of tallest plume"               "m"
 state   real   excess_h         ij     misc        1         -      h         "excess_h"         "Max heat excess of plume initialization" "K"
 state   real   excess_q         ij     misc        1         -      h         "excess_q"         "Max moisture excess of plume initialization" "kg/kg"
+state   real   maxMF_dd         ij     misc        1         -      h         "maxMF_dd"         "Maximum mass-flux of downdrafts"       "m/s * area"
+state   real   maxwidth_dd      ij     misc        1         -      h         "maxwidth_dd"      "Maximum downdraft width"               "m"
+state   real   maxtkeprod       ij     misc        1         -      h         "maxtkeprod"       "Maximum tke production by cloud top cooling" "m2/s2/hr"
+state   real   cldtop_cooling   ij     misc        1         -      h         "cldtop_cooling"   "Radiative cooling at cloud top"        "K/hr"
+state   real   ent_eff          ij     misc        1         -      h         "ent_eff"          "Entrainment efficiency for cloud tops" "unitless"
 
 #FogDES variables
 state   real   fgdp             ij     misc        1         -      -        "fgdp"                "Accumulated fog deposition"    "mm"
@@ -2439,8 +2444,8 @@ rconfig   integer  nssl_3moment           namelist,physics      1             0 
 rconfig   integer  nssl_density_on        namelist,physics      1            -1       rh       "NSSL graupel/hail density flag"  ""      ""
 rconfig   integer  nssl_ssat_output       namelist,physics      1             0       rh       "NSSL ssat output flag"  ""      ""
 
-rconfig   integer  tempo_aerosolaware     namelist,physics      1             1       rh       "TEMPO aerosol-aware flag"  ""      ""
-rconfig   integer  tempo_hailaware        namelist,physics      1             1       rh       "TEMPO hail-aware flag"  ""      ""
+rconfig   integer  tempo_aerosolaware     namelist,physics      1             0       rh       "TEMPO aerosol-aware flag"  ""      ""
+rconfig   integer  tempo_hailaware        namelist,physics      1             0       rh       "TEMPO hail-aware flag"  ""      ""
 
 rconfig   integer     CCNTY               namelist,physics      1            2        rh       "Aerosol background type for NTU microphysics"  ""   ""
 
@@ -2650,6 +2655,8 @@ rconfig   real    oml_gamma               namelist,physics      1            0.1
 rconfig   real    oml_relaxation_time     namelist,physics      1            0.        h     "oml_relaxation_time"   "Relaxation time of mixed layer ocean model back to original values"      "s"
 rconfig   integer isftcflx                namelist,physics      1            0         h     "isftcflx"    "switch to control sfc fluxes"   ""
 rconfig   integer iz0tlnd                 namelist,physics      1            0         h     "iz0tlnd"    "switch to control land thermal roughness length"   ""
+rconfig   logical kim_tofd                namelist,physics      max_domains   .false.  rh    "kim_tofd"   "turbulent form drag (tofd) option for kim gravity wave drag"   ""
+rconfig   real    tofd_factor             namelist,physics      max_domains   .003     rh    "tofd_factor" "factor in  kim tofd scheme"   ""
 rconfig   real    shadlen                 namelist,physics      1            25000.    -     "shadow_length" "maximum length of orographic shadow" "m"
 rconfig   integer slope_rad               namelist,physics      max_domains    0       -     "slope_rad"  "1: use slope-dependent radiation, 0:not" ""
 rconfig   integer topo_shading            namelist,physics      max_domains    0       -     "topo_shading" "1: apply topographic shading to radiation, 0:not" ""
@@ -2727,8 +2734,8 @@ rconfig   integer opt_pedo    namelist,noah_mp      1           1         h    "
 rconfig   integer opt_crop    namelist,noah_mp      1           0         h    "opt_crop" "crop model option"   ""
 rconfig   integer opt_irr     namelist,noah_mp      1           0         h    "opt_irr"  "Noah-MP irrigation option"   ""
 rconfig   integer opt_irrm    namelist,noah_mp      1           0         h    "opt_irrm" "Noah-MP irrigation method option"   ""
-rconfig   integer opt_infdv   namelist,noah_mp      1           0         h    "opt_infdv" "Noah-MP infiltration option in dynamic VIC runoff scheme (only works with opt_run=8), 1->Philip; 2->Green-Ampt; 3->Smith-Parlange"
-rconfig   integer opt_tdrn    namelist,noah_mp      1           0         h    "opt_tdrn" "NoahMP tile drainage option (currently only tested & works with opt_run=3), 0->no tile drainage; 1->Simple drainage; 2->Hooghoudt scheme"
+rconfig   integer opt_infdv   namelist,noah_mp      1           0         h    "opt_infdv" "Noah-MP infiltration option in dynamic VIC runoff scheme (only works with opt_runsrf=8), 1->Philip; 2->Green-Ampt; 3->Smith-Parlange"
+rconfig   integer opt_tdrn    namelist,noah_mp      1           0         h    "opt_tdrn" "NoahMP tile drainage option (currently only tested & works with opt_runsrf=3), 0->no tile drainage; 1->Simple drainage; 2->Hooghoudt scheme"
 rconfig   real    soiltstep   namelist,noah_mp      1           0.        h    "soiltstep" "NoahMP soil process timestep (s) for solving soil temperature and water (default:0->same as main noahmp timestep)"
 rconfig   real    WTDDT               namelist,physics    max_domains   30.      h     "wtddt"    "minutes between calls to lateral hydro"  ""
 rconfig   real    noahmp_acc_dt       namelist,noah_mp      1           0.        h    "noahmp_acc_dt" "bucket reset time interval between outputs for noah-mp accumulation"   "minutes"
@@ -2893,13 +2900,8 @@ rconfig   integer damp_opt                namelist,dynamics	1             3     
 rconfig   integer rad_nudge               namelist,dynamics	1             0       irh    "rad_nudge"             ""      ""
 rconfig   integer gwd_opt                 namelist,dynamics     max_domains   0       irh    "gwd_opt"               ""      ""
 rconfig   integer gwd_diags               namelist,dynamics     1             0       irh    "gwd_diags"             "switch to turn on extra gwd diagnostics if available for given gwd_opt"      ""
-<<<<<<< HEAD
-rconfig   real    gwd_dx_factor           namelist,dynamics max_domains    2.   rh    "gwd_dx_factor" "effective grid factor for kim gravity wave drag"   ""
-rconfig   logical gwd_if_nonhyd           namelist,dynamics max_domains   .true.  rh   "gwd_if_nonhyd" "non_hydrostatic option for kim gravity wave drag"   ""
-=======
-rconfig   logical kim_tofd                namelist,dynamics    max_domains   .true.  rh   "kim_tofd" "turbulent form drag (tofd) option for kim gravity wave drag"   ""
-rconfig   real    tofd_factor             namelist,dynamics    max_domains   .003   rh    "tofd_factor" "factor in  kim tofd scheme"   ""
->>>>>>> cc524de3ed762a43176cf5318b47656d4a284e7c
+rconfig   real    gwd_dx_factor           namelist,dynamics     max_domains    2.   rh    "gwd_dx_factor" "effective grid factor for kim gravity wave drag"   ""
+rconfig   logical gwd_if_nonhyd           namelist,dynamics     max_domains   .true.  rh   "gwd_if_nonhyd" "non_hydrostatic option for kim gravity wave drag"   ""
 rconfig   real    zdamp                   namelist,dynamics	max_domains    5000.   h    "zdamp"         ""      ""
 rconfig   real    dampcoef                namelist,dynamics     max_domains    0.2     h    "dampcoef"              ""      ""
 rconfig   real    khdif                   namelist,dynamics	max_domains    0       h    "khdif"         ""      ""
@@ -3228,7 +3230,7 @@ package   ysuscheme      bl_pbl_physics==1           -             -
 package   myjpblscheme   bl_pbl_physics==2           -             state:tke_pbl,el_pbl
 package   gfsscheme      bl_pbl_physics==3           -             -
 package   qnsepblscheme  bl_pbl_physics==4           -             state:tke_pbl,el_pbl,massflux_EDKF,entr_EDKF,detr_EDKF,thl_up,thv_up,rv_up,rt_up,rc_up,u_up,v_up,frac_up,rc_mf
-package   mynnpblscheme  bl_pbl_physics==5           -             scalar:qke_adv;state:qke,sh3d,sm3d,tsq,qsq,cov,el_pbl,tke_pbl
+package   mynnpblscheme  bl_pbl_physics==5           -             scalar:qke_adv;state:qke,sh3d,sm3d,tsq,qsq,cov,cldfra_bl,qc_bl,qi_bl,el_pbl,tke_pbl
 package   acmpblscheme   bl_pbl_physics==7           -             -
 package   boulacscheme   bl_pbl_physics==8           -             state:el_pbl,tke_pbl,wu_tur,wv_tur,wt_tur,wq_tur
 package   camuwpblscheme bl_pbl_physics==9           -             state:tauresx2d,tauresy2d,tpert2d,qpert2d,wpert2d,tke_pbl,smaw3d,wsedl3d,turbtype3d
@@ -3240,11 +3242,10 @@ package   kepsscheme     bl_pbl_physics==17          -             scalar:tke_ad
 package   mrfscheme      bl_pbl_physics==99          -             -
 
 package   tkebudget      tke_budget==1               -             state:qSHEAR,qBUOY,qDISS,qWT,dqke
-package   mynn_dmp_edmf1 bl_mynn_edmf==1             -             state:ztop_plume,maxmf,maxwidth,excess_h,excess_q
-package   mynn_dmp_edmf2 bl_mynn_edmf==2             -             state:ztop_plume,maxmf,maxwidth,excess_h,excess_q
+package   mynn_dmp_edmf1 bl_mynn_edmf==1             -             state:ztop_plume,maxmf,maxwidth,excess_h,excess_q,maxmf_dd,maxwidth_dd,maxtkeprod,cldtop_cooling,ent_eff
+package   mynn_dmp_edmf2 bl_mynn_edmf==2             -             state:ztop_plume,maxmf,maxwidth,excess_h,excess_q,maxmf_dd,maxwidth_dd,maxtkeprod,cldtop_cooling,ent_eff
 package   mynn_3Doutput1 bl_mynn_output==1           -             state:edmf_a,edmf_w,edmf_thl,edmf_qt,edmf_ent,edmf_qc,sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D
 package   mynn_3Doutput2 bl_mynn_output==2           -             state:edmf_a,edmf_w,edmf_thl,edmf_qt,edmf_ent,edmf_qc,sub_thl3D,sub_sqv3D,det_thl3D,det_sqv3D
-package   pbl_cloud      icloud_bl==1                -             state:cldfra_bl,qc_bl,qi_bl
 
 package   sms_3dtke      km_opt==5                   -             state:gamu,gamv,nlflux,dlk,l_diss,elmin,xkmv_meso
 
@@ -3552,6 +3553,8 @@ halo      HALO_EM_COUPLE_B   dyn_em 48:ph_1,ph_2,w_1,w_2,t_1,t_2,u_1,u_2,v_1,v_2
                                        moist,chem,tracer,scalar
 period    PERIOD_EM_COUPLE_B dyn_em 3:ph_1,ph_2,w_1,w_2,t_1,t_2,u_1,u_2,v_1,v_2,\
                                        moist,chem,tracer,scalar
+
+halo      HALO_EM_CFBM dyn_em 8:znt,t2,q2,psfc,rainc,rainnc,u10,v10
 
 #cyl for trajectory 
 halo      HALO_EM_F dyn_em  24:muu,muv,mut

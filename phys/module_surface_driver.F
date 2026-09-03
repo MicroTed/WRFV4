@@ -112,9 +112,8 @@ CONTAINS
      &          ,zi3d,         watsat3d,     csol3d,     tkmg3d         & !lake
      &          ,tkdry3d,      tksatu3d,     LakeModel,  lake_min_elev     & !lake
 #if (EM_CORE==1)
- !    &          ,lakemask,  lakeflag                                  & !lake
-     &          ,lakemask                                  & !lake
-                , restart_flag                             & ! restart_flag
+     &          ,lakemask                                               & !lake
+                , restart_flag                                          & ! restart_flag
 #endif
 ! KIM TOFD
                 ,kim_tofd                                            & ! kim tofd
@@ -2477,6 +2476,7 @@ CONTAINS
                its=i_start(ij),ite=i_end(ij),jts=j_start(ij),      &
                jte=j_end(ij), kts=kts,kte=kte,                     &
                ustm=ustm,ck=ck,cka=cka,cd=cd,cda=cda,              &
+               xice=xice,xice_threshold=xice_threshold,            &
                sf_mynn_sfcflux_land=sf_mynn_sfcflux_land,          &
                sf_mynn_sfcflux_water=sf_mynn_sfcflux_water,        &
                isfflx=isfflx,shalwater_z0=shalwater_z0,            &
@@ -5374,8 +5374,9 @@ CONTAINS
               ids,ide, jds,jde, kds,kde,                           &
               ims,ime, jms,jme, kms,kme,                           &
               its,ite, jts,jte, kts,kte,                           &
-              ustm,ck,cka,cd,cda,sf_mynn_sfcflux_land,             &
-              sf_mynn_sfcflux_water,flag_lsm,restart,              &
+              ustm,ck,cka,cd,cda,                                  &
+              sf_mynn_sfcflux_land,sf_mynn_sfcflux_water,          &
+              flag_lsm,restart,                                    &
               shalwater_z0,water_depth,lakemask,                   &
               errmsg,errflg                                        )
 
@@ -5565,6 +5566,7 @@ CONTAINS
                ims=ims,ime=ime,jms=jms,jme=jme,kms=kms,kme=kme,&
                its=its,ite=ite,jts=jts,jte=jte,kts=kts,kte=kte,&
                ustm=ustm,ck=ck,cka=cka,cd=cd,cda=cda,          &
+               xice=xice,xice_threshold=xice_threshold,        &
                sf_mynn_sfcflux_land=sf_mynn_sfcflux_land,      &
                sf_mynn_sfcflux_water=sf_mynn_sfcflux_water,    &
                isfflx=isfflx,shalwater_z0=shalwater_z0,        &
@@ -5632,6 +5634,7 @@ CONTAINS
            ims=ims,ime=ime, jms=jms,jme=jme, kms=kms,kme=kme,                  &
            its=its,ite=ite, jts=jts,jte=jte, kts=kts,kte=kte,                  &
            ustm=ustm_sea,ck=ck_sea,cka=cka_sea,cd=cd_sea,cda=cda_sea,          &
+           xice=xice,xice_threshold=xice_threshold,                            &
            sf_mynn_sfcflux_land=sf_mynn_sfcflux_land,                          &
            sf_mynn_sfcflux_water=sf_mynn_sfcflux_water,isfflx=isfflx,          &
            flag_lsm=flag_lsm,restart=restart,                                  &
