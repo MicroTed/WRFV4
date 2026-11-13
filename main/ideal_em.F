@@ -258,7 +258,7 @@ SUBROUTINE med_initialdata_output ( grid , config_flags )
 
   ! Arguments
    TYPE(domain)  , POINTER                    :: grid
-   TYPE (grid_config_rec_type) , INTENT(IN)   :: config_flags
+   TYPE (grid_config_rec_type) , INTENT(INOUT)   :: config_flags
   ! Local
    INTEGER                :: time_step_begin_restart
    INTEGER                :: fid , ierr , id
@@ -270,6 +270,7 @@ SUBROUTINE med_initialdata_output ( grid , config_flags )
 
    grid%input_from_file = .false.
    CALL init_domain (  grid )
+   CALL model_to_grid_config_rec ( grid%id , model_config_rec , config_flags )
    CALL calc_current_date ( grid%id, 0.)
 
    CALL construct_filename1 ( inpname , 'wrfinput' , grid%id , 2 )

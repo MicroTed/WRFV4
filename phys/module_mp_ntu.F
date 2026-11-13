@@ -5490,8 +5490,8 @@
             ENDIF
          ENDIF
          IF (QG1D.GE.QSMALL) THEN
-            DSLL = 2.*1.E-2*(EXP(MIN(20.,-TC1D/(1.1E4*(QC1D+QR1D)-     &
-                   1.3E3*QG1D+1.)))-1.)
+            DSLL = 2.*1.E-2*(EXP(MIN(20.,-TC1D/(1.1E4*rho*(QC1D+QR1D)-     &
+                   1.3E3*rho*QI1D+1.)))-1.)
             DSLL = MIN(1.,MAX(1.E-4,DSLL))
             IF (AFAG.LE.20.) THEN
                RATIO = MIN(1.,MAX(0.,ABS(GAMMP(AFAG+1.,DSLL*LAMG))))
@@ -5518,7 +5518,8 @@
                   ENDIF
                ENDIF
             ENDIF
-            NhCNgh = QCNgh/(AMH*DHMIN**BMH)
+!            NhCNgh = QCNgh/(AMH*DHMIN**BMH)
+            NhCNgh = QCNgh/(AMH*(Min(0.015,Max(dsll,DHMIN*1.1)))**BMH) ! 1.1 factor to make it a little bigger than minimum
             AhCNgh = (KCHMIN*NhCNgh*(QCNgh*iAMH)**2.)**THRD
          ENDIF
 !----------------- RIMING OF CLOUD DROPLETS ----------------------------

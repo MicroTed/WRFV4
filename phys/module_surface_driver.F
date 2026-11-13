@@ -1611,6 +1611,13 @@ CONTAINS
          CHS(i,j) = 0.
          CPM(i,j) = 0.
          CHS2(i,j) = 0.
+      
+          IF ( .not. ( 0. <  gsw(i,j) .and. gsw(i,j) < 2000. ) ) THEN
+            write(0,*) 'sfcdrv: gsw = ',i,j,gsw(i,j)
+          ENDIF
+          IF ( .not. ( 0. <  glw(i,j) .and. glw(i,j) < 2000. ) ) THEN
+            write(0,*) 'sfcdrv: glw = ',i,j,glw(i,j)
+          ENDIF
       ENDDO
     ENDDO
   ENDDO

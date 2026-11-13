@@ -925,7 +925,11 @@ print *,'WATER CHANGE = ',change_water
                                   its,ite, jts,jte, kts,kte              )
       ELSE IF ( ( sf_surface_physics .EQ. RUCLSMSCHEME ) .AND. ( num_soil_layers .GT. 1 ) ) THEN
          CALL init_soil_depth_3 ( zs , dzs , num_soil_layers )
-
+         CALL init_soil_1_ideal(tsk,tmn,tslb,xland,                      &
+                                ivgtyp,zs,dzs,num_soil_layers,           &
+                                ids,ide, jds,jde, kds,kde,               &
+                                ims,ime, jms,jme, kms,kme,               &
+                                its,ite, jts,jte, kts,kte                )
       END IF
 
    END SUBROUTINE process_soil_ideal
